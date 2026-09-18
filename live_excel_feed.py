@@ -2,7 +2,7 @@ import json
 import re
 import os
 
-HTML_FILE = "konigstein_capital_portfolio_grid (2).html"
+HTML_FILE = "index.html"
 EXCEL_FILE = "KAHF_Consolidated_Fund_Model  Updated.xlsx"
 
 # Using keyword mapping to handle slight name differences across different Excel tabs

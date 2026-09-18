@@ -5,7 +5,7 @@ import os
 
 # File paths
 CSV_FILE = "Portfolio_API_Master.csv"
-HTML_FILE = "konigstein_capital_portfolio_grid (2).html"
+HTML_FILE = "index.html"
 
 def get_existing_images(html_path):
     """Extracts existing images from the HTML so the CSV doesn't overwrite them."""

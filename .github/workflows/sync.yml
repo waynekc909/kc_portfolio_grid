@@ -3,12 +3,15 @@ name: Sync Live Excel Data
 on:
   push:
     paths:
-      - '*.xlsx' # Triggers whenever an Excel model is pushed
-  workflow_dispatch: # Allows manual triggers from GitHub UI
+      - '*.xlsx'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Grants write access to commit index.html back to the repo
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -28,7 +31,7 @@ jobs:
 
       - name: Commit and push updated index.html
         run: |
-          git config --global user.name 'GitHub Action Bot'
-          git config --global user.email 'action@github.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update live metrics from Excel" && git push)

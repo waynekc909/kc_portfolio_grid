@@ -7,7 +7,6 @@ import tempfile
 HTML_FILE = "index.html"
 EXCEL_FILE = "KAHF_Consolidated_Fund_Model  Updated.xlsx"
 
-# Using keyword mapping to handle slight name differences across different Excel tabs
 KEYWORD_MAP = {
     "Kronlein": "dumatau_krohnlein",
     "Dunescape": "dunescape",
@@ -18,14 +17,13 @@ KEYWORD_MAP = {
     "The Ridge": "rockycrest",
     "C-Breeze": "cbreeze",
     "Tama": "tama",
-    "Nkurenkuru Ext 2": "nkurenkuru", # Distinguishes Phase 2
-    "Nkurenkuru Ph 1": "lih",         # Distinguishes Phase 1
+    "Nkurenkuru Ext 2": "nkurenkuru",
+    "Nkurenkuru Ph 1": "lih",
     "Ext 10": "calgrokuumba_otjomuise10",
     "Heaven's Ark": "otjomuise"
 }
 
 def get_web_id(excel_name):
-    """Finds the matching web ID based on keywords in the Excel project name."""
     name_lower = str(excel_name).lower()
     for keyword, web_id in KEYWORD_MAP.items():
         if keyword.lower() in name_lower:
@@ -50,7 +48,6 @@ def run_pipeline():
     asset_dict = {a['id']: a for a in assets}
 
     print("2. Connecting to live Excel model...")
-    # Create temporary copy to prevent Windows file-locking errors [Errno 13]
     temp_excel = os.path.join(tempfile.gettempdir(), "temp_fund_model.xlsx")
     shutil.copy2(EXCEL_FILE, temp_excel)
 
@@ -61,28 +58,37 @@ def run_pipeline():
         # --- TAB 1: FINANCIAL METRICS ---
         ws_perf = wb['2. Project Performance']
         
-        # Safe default column map
+        # Exact Column Positions from Diagnostic (Row 4)
         header_row = 4
-        col_map = {'name': 1, 'status': 2, 'dealSize': 6, 'valuation': 9, 'moic': 11, 'irr': 12}
+        col_map = {
+            'name': 1,      # Col A: Project
+            'status': 2,    # Col B: Status
+            'dealSize': 6,  # Col F: Approved deal size / facility
+            'valuation': 10,# Col J: Carrying value / NAV
+            'moic': 12,     # Col L: MOIC / TVPI
+            'irr': 13       # Col M: Updated IRR
+        }
 
-        # Dynamically detect column headers across top 10 rows
+        # Dynamic scanner override
         for r in range(1, 10):
             row_values = [str(ws_perf.cell(r, c).value or '').strip().lower() for c in range(1, 20)]
-            if any('project' in v or 'asset' in v for v in row_values):
+            if any(v == 'project' for v in row_values):
                 header_row = r
                 for c in range(1, 20):
                     val = str(ws_perf.cell(r, c).value or '').strip().lower()
-                    if 'project' in val or 'asset' in val: col_map['name'] = c
-                    elif 'status' in val: col_map['status'] = c
-                    elif 'deal size' in val or 'commitment' in val: col_map['dealSize'] = c
-                    elif 'nav' in val or 'valuation' in val: col_map['valuation'] = c
+                    if val == 'project': col_map['name'] = c
+                    elif val == 'status': col_map['status'] = c
+                    elif 'approved deal size' in val: col_map['dealSize'] = c
+                    elif 'carrying value' in val or 'nav' in val: col_map['valuation'] = c
                     elif 'moic' in val: col_map['moic'] = c
-                    elif 'irr' in val: col_map['irr'] = c
+                    elif 'updated irr' in val: col_map['irr'] = c
                 break
+
+        print(f"Extraction Mapping -> Header Row: {header_row}, Columns: {col_map}")
 
         for r in range(header_row + 1, ws_perf.max_row + 1):
             excel_name = ws_perf.cell(r, col_map['name']).value
-            if not excel_name:
+            if not excel_name or str(excel_name).strip().startswith("PORTFOLIO"):
                 continue
 
             web_id = get_web_id(excel_name)
@@ -112,11 +118,12 @@ def run_pipeline():
                 elif str(moic).strip().lower() == 'n/a':
                     asset['moicNumeric'] = None 
                     
-                # IRR -> Smart Scale (Handles decimal 0.0874 vs whole number 8.74)
+                # IRR
                 irr = ws_perf.cell(r, col_map['irr']).value
                 if isinstance(irr, (int, float)):
                     val = float(irr)
                     asset['irr'] = round(val * 100, 2) if val < 2.0 else round(val, 2)
+                    print(f"Synced {web_id}: IRR = {asset['irr']}%, MOIC = {asset.get('moicNumeric')}")
 
         # --- TAB 2: OPERATIONAL/DELIVERY METRICS ---
         ws_deliv = wb['3. Delivery Outputs']
@@ -127,13 +134,11 @@ def run_pipeline():
             if web_id and web_id in asset_dict:
                 asset = asset_dict[web_id]
                 
-                # Planned Units (Col B)
                 units = ws_deliv.cell(r, 2).value
                 if isinstance(units, (int, float)):
                     asset['units'] = int(units)
                     asset['unitsDisplay'] = f"{int(units)} units"
                 
-                # Completion Percentage (Col F)
                 pct = ws_deliv.cell(r, 6).value
                 if isinstance(pct, (int, float)):
                     val_pct = float(pct)

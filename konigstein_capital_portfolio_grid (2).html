@@ -1,0 +1,3200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KÖNIGSTEIN CAPITAL — KAHF & KCPIF Portfolio</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          forestDeep: '#0B2B20',
+          forest:     '#133E2E',
+          sand:       '#C5A880',
+          sandDk:     '#AD8E68',
+          linen:      '#F8F7F4',
+          ink:        '#1F2A24',
+          slate:      '#5B6B62',
+          line:       '#E2E8F0',
+          activeBg:   '#FBF1E3',   activeText:   '#9C6B1F',
+          stableBg:   '#EAF3EC',   stableText:   '#1F7A4D',
+          exitedBg:   '#F1EFEA',   exitedText:   '#6B6255',
+          pipeBg:     '#EEF1F6',   pipeText:     '#3B5170',
+          kahfBg:     '#0B2B20',   kahfText:     '#E8DEC8',
+          kcpifBg:    '#C5A880',   kcpifText:    '#1F2A24',
+        },
+        fontFamily: {
+          display: ['"Cormorant Garamond"', 'serif'],
+          sans: ['"Inter"', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  .tnum { font-variant-numeric: tabular-nums; }
+  html { scroll-behavior: smooth; }
+  body { background-color: #F8F7F4; }
+
+  select.kc-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235B6B62' stroke-width='2' viewBox='0 0 24 24'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 15px;
+  }
+
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, span[tabindex]:focus-visible {
+    outline: 2px solid #AD8E68;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Card interactions */
+  .prop-img-wrap { overflow: hidden; }
+  .prop-img { transition: transform 600ms cubic-bezier(.16,1,.3,1); object-position: center 40%; }
+  .prop-card:hover .prop-img { transform: scale(1.045); }
+
+  .fund-pill-kahf { background: #0B2B20; color: #E8DEC8; }
+  .fund-pill-kcpif { background: #C5A880; color: #1F2A24; }
+
+  .list-view .prop-card { display: grid; grid-template-columns: 260px 1fr; }
+  .list-view .prop-card .prop-img-wrap { aspect-ratio: auto; height: 100%; }
+  .list-view .prop-card .prop-body { display: grid; grid-template-columns: 1.1fr 1fr auto; gap: 1.5rem; align-items: center; }
+  @media (max-width: 900px) {
+    .list-view .prop-card { grid-template-columns: 1fr; }
+    .list-view .prop-card .prop-body { grid-template-columns: 1fr; }
+  }
+
+  .fade-in { animation: fadeIn 380ms ease both; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to {opacity:1; transform:translateY(0);} }
+  .view-fade { animation: viewFade 320ms ease both; }
+  @keyframes viewFade { from { opacity:0; transform: translateY(10px);} to {opacity:1; transform:translateY(0);} }
+
+  /* KPI ribbon frosted glass */
+  .kpi-card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(232,222,200,0.18);
+  }
+
+  /* Leaflet map */
+  #leafletMap { height: 400px; border-radius: 0.75rem; z-index: 0; }
+  .leaflet-popup-content-wrapper { border-radius: 8px; font-family: 'Inter', sans-serif; }
+
+  /* Tabs */
+  .tab-btn.active { color: #0B2B20; border-color: #C5A880; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Lightbox */
+  #lightbox { transition: opacity 220ms ease; }
+  #lightboxImg { transition: opacity 200ms ease; }
+  .thumb-strip img { transition: opacity 150ms ease, border-color 150ms ease; cursor: pointer; }
+  .thumb-strip img.active-thumb { border-color: #C5A880; opacity: 1; }
+  .thumb-strip img:not(.active-thumb) { opacity: 0.5; }
+
+  /* Seamless Header-Hero Merge + Parallax */
+  #siteHeader {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    background-color: transparent;
+    border-bottom: 1px solid transparent;
+    transition: background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease, backdrop-filter 300ms ease;
+  }
+  #siteHeader.scrolled {
+    background-color: rgba(11,43,32,0.95);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom-color: rgba(255,255,255,0.1);
+    box-shadow: 0 8px 24px -12px rgba(0,0,0,0.35);
+  }
+  #heroParallaxImg {
+    will-change: transform;
+    transform: translateY(0) scale(1.08);
+    transition: transform 60ms linear;
+  }
+
+  /* Frosted Glass Surfaces */
+  .glass-light {
+    background-color: rgba(255,255,255,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(226,232,240,0.9);
+  }
+  .glass-badge {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background-color: rgba(11,43,32,0.78);
+    border: 1px solid rgba(197,168,128,0.35);
+  }
+  .emboss-tag {
+    background-color: rgba(255,255,255,0.92);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 1px rgba(11,43,32,0.12), 0 1px 3px rgba(11,43,32,0.15);
+    color: #0B2B20;
+  }
+
+  /* Vault Checkboxes */
+  input.vault-check {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 1.5px solid rgba(197,168,128,0.55);
+    border-radius: 5px;
+    background-color: transparent;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  }
+  input.vault-check:checked {
+    background-color: #0B2B20;
+    border-color: #C5A880;
+    box-shadow: 0 0 0 4px rgba(197,168,128,0.16);
+  }
+  input.vault-check:checked::after {
+    content: '';
+    position: absolute; left: 5px; top: 1px;
+    width: 5px; height: 9px;
+    border: solid #C5A880;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  input.vault-check:hover { border-color: #C5A880; }
+
+  .filter-row { display: flex; align-items: center; gap: 0.65rem; padding: 0.4rem 0; cursor: pointer; }
+  .filter-row span { font-size: 0.875rem; color: #1F2A24; transition: color 150ms ease; }
+  .filter-row:hover span { color: #0B2B20; font-weight: 500; }
+  .filter-group-title {
+    font-size: 0.7rem; letter-spacing: 0.12em; font-weight: 700; color: #AD8E68;
+    text-transform: uppercase; margin-bottom: 0.6rem; margin-top: 1.4rem;
+  }
+  .filter-group-title:first-child { margin-top: 0; }
+
+  .hero-scrim { background: linear-gradient(to top, rgba(11,43,32,0.92) 0%, rgba(11,43,32,0.35) 55%, transparent 100%); }
+  .thumb-card { cursor: pointer; overflow: hidden; border-radius: 0.65rem; position: relative; }
+  .thumb-card img { transition: transform 400ms ease, opacity 200ms ease; }
+  .thumb-card:hover img { transform: scale(1.06); }
+  .thumb-card.active-main { outline: 3px solid #C5A880; outline-offset: 2px; }
+  #panoramicImg { transition: opacity 200ms ease; object-position: center 40%; }
+  .floating-card { box-shadow: 0 25px 55px -20px rgba(11,43,32,0.18); }
+
+  .hairline-track { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,0.35); }
+  .hairline-fill { height: 100%; background: #C5A880; transition: width 700ms ease; }
+  .hover-reveal {
+    max-height: 0; opacity: 0; overflow: hidden;
+    transition: max-height 320ms ease, opacity 240ms ease, margin-top 320ms ease;
+  }
+  .prop-card:hover .hover-reveal { max-height: 120px; opacity: 1; margin-top: 0.75rem; }
+  .prop-card:hover { transform: translateY(-4px); }
+  .prop-card { transition: transform 220ms ease, box-shadow 220ms ease; }
+  .prop-card:hover { box-shadow: 0 20px 40px -18px rgba(11,43,32,0.28); }
+  @media (hover: none) {
+    .hover-reveal { max-height: 120px; opacity: 1; margin-top: 0.75rem; }
+  }
+
+  .cf-timeline { position: relative; display: flex; justify-content: space-between; padding: 0 4px; }
+  .cf-timeline::before {
+    content: ''; position: absolute; top: 19px; left: 5%; right: 5%; height: 2px;
+    background: repeating-linear-gradient(to right, #C5A880 0, #C5A880 6px, transparent 6px, transparent 12px);
+  }
+  .cf-node { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; width: 31%; }
+  .cf-dot {
+    width: 40px; height: 40px; border-radius: 9999px; background: #0B2B20; border: 2px solid #C5A880;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;
+  }
+
+  .moic-widget { background: linear-gradient(135deg, #0B2B20 0%, #133E2E 100%); border: 1px solid rgba(197,168,128,0.3); }
+
+  #leafletMap { height: 400px; border-radius: 0.75rem; z-index: 0; background: #F1EFEA; }
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px;
+    background-color: rgba(255,255,255,0.96);
+    backdrop-filter: blur(10px);
+    color: #1F2A24;
+    font-family: 'Inter', sans-serif;
+    border: 1px solid rgba(197,168,128,0.4);
+  }
+  .leaflet-popup-tip { background-color: rgba(255,255,255,0.96); }
+  .leaflet-popup-content strong { color: #0B2B20; }
+  .pulse-marker { position: relative; width: 16px; height: 16px; }
+  .pulse-marker .dot {
+    position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; border-radius: 9999px;
+    background: #0B2B20; border: 2.5px solid #C5A880; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 2;
+  }
+  .pulse-marker .ring {
+    position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; border-radius: 9999px;
+    border: 2px solid #C5A880; animation: pulseRing 2.2s ease-out infinite;
+  }
+  @keyframes pulseRing {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(2.8); opacity: 0; }
+  }
+
+  #toast { transition: opacity 250ms ease, transform 250ms ease; }
+</style>
+</head>
+<body class="font-sans text-ink antialiased">
+
+<div id="view-hub">
+
+  <header id="siteHeader">
+    <div class="max-w-[1440px] mx-auto px-6 lg:px-10">
+      <div class="flex items-center justify-between h-20">
+        <a href="#top" class="flex flex-col leading-none">
+          <span class="font-display font-semibold text-2xl tracking-[0.12em] text-white">KÖNIGSTEIN</span>
+          <span class="font-sans text-[10px] tracking-[0.45em] text-sand">CAPITAL</span>
+        </a>
+
+        <nav class="hidden lg:flex items-center gap-9 text-sm font-medium text-white/85">
+          <a href="#top" class="hover:text-white transition-colors">Overview</a>
+          <a href="#strategy" class="hover:text-white transition-colors">Regional Footprint</a>
+          <a href="#portfolio" class="hover:text-white transition-colors">Portfolio</a>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <a href="#" class="hidden sm:inline-flex items-center gap-2 text-sm font-medium border border-sand/40 text-sand px-4 py-2 rounded-sm hover:bg-white/10 transition-colors">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            Investor Login
+          </a>
+          <button id="mobileNavBtn" aria-label="Open menu" class="lg:hidden w-9 h-9 flex items-center justify-center border border-white/30 rounded-sm text-white">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <nav id="mobileNav" class="hidden lg:hidden pb-4 flex flex-col gap-3 text-sm font-medium text-white/90">
+        <a href="#top">Overview</a>
+        <a href="#strategy">Regional Footprint</a>
+        <a href="#portfolio">Portfolio</a>
+        <a href="#" class="inline-flex items-center gap-2 text-sand"><i data-lucide="lock" class="w-3.5 h-3.5"></i>Investor Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <section id="top" class="relative bg-forestDeep overflow-hidden">
+    <div class="absolute inset-0 overflow-hidden">
+      <img id="heroParallaxImg" src="https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1800&q=70" alt="" class="w-full h-full object-cover opacity-35" />
+      <div class="absolute inset-0 bg-gradient-to-b from-forestDeep/70 via-forestDeep/30 to-forestDeep"></div>
+    </div>
+    <div class="relative max-w-[1440px] mx-auto px-6 lg:px-10 pt-40 pb-16 lg:pt-48 lg:pb-20 text-center">
+      <h1 class="font-display font-medium text-4xl sm:text-5xl lg:text-6xl tracking-[0.04em] text-white">
+        YOUR NAMIBIAN CAPITAL PARTNER
+      </h1>
+      <p class="mt-5 text-sand text-sm sm:text-base tracking-[0.25em] font-medium">
+        KAHF &amp; KCPIF — UNLISTED PROPERTY &amp; HOUSING PORTFOLIOS
+      </p>
+      <p class="mt-8 max-w-2xl mx-auto text-white/70 text-base leading-relaxed">
+        13 Liliencron Street, Windhoek, Namibia — deploying patient capital across the Königstein
+        Affordable Housing Fund (KAHF) and the Königstein Capital Property Investment Fund (KCPIF).
+      </p>
+    </div>
+
+    <!-- Portfolio at a Glance -->
+    <div id="kpiRibbon" class="relative border-t border-white/10 bg-forest/60">
+      <div class="max-w-[1440px] mx-auto px-6 lg:px-10 py-10">
+        <p class="text-sand text-xs tracking-[0.3em] font-semibold text-center mb-8">PORTFOLIO AT A GLANCE</p>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <div class="kpi-card rounded-xl p-6 text-center">
+            <p class="font-display text-4xl text-white tnum"><span id="kpiCapital">N$0</span></p>
+            <p class="mt-2 text-xs tracking-wide text-white/60">Total Capital Under Management</p>
+          </div>
+          <div class="kpi-card rounded-xl p-6 text-center">
+            <p class="font-display text-4xl text-white tnum"><span id="kpiIRR">0.0</span>%</p>
+            <p class="mt-2 text-xs tracking-wide text-white/60">Weighted Avg. Target / Realised IRR</p>
+          </div>
+          <div class="kpi-card rounded-xl p-6 text-center">
+            <p class="font-display text-4xl text-white tnum"><span id="kpiArea">0</span>+ m²</p>
+            <p class="mt-2 text-xs tracking-wide text-white/60">Total Area Developed / Serviced</p>
+          </div>
+          <div class="kpi-card rounded-xl p-6 text-center">
+            <p class="font-display text-4xl text-white tnum"><span id="kpiDeals">0</span></p>
+            <p class="mt-2 text-xs tracking-wide text-white/60">Projects Under Management</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Properties module -->
+  <main class="bg-linen">
+    <div class="max-w-[1440px] mx-auto px-6 lg:px-10 py-14">
+
+      <div id="portfolio" class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8 items-start">
+
+        <!-- STICKY LEFT SIDEBAR -->
+        <aside class="glass-light lg:sticky lg:top-28 rounded-xl shadow-sm p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="font-display text-xl text-ink">Filters</h3>
+            <button id="resetFiltersBtn" type="button" class="text-xs font-semibold text-sandDk hover:text-forestDeep transition-colors">Reset</button>
+          </div>
+
+          <div class="relative mb-2">
+            <i data-lucide="search" class="w-4 h-4 text-slate absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input id="searchInput" type="text" placeholder="Quick search…"
+              class="w-full bg-white border border-line rounded-md pl-9 pr-3 py-2.5 text-sm text-ink placeholder:text-slate/60 focus:border-sandDk outline-none transition-colors" />
+          </div>
+
+          <!-- Fund Category -->
+          <p class="filter-group-title">Fund Category</p>
+          <label class="filter-row"><input type="checkbox" class="vault-check fund-check" value="all" checked><span>All Funds</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check fund-check" value="KAHF"><span>KAHF (Affordable Housing)</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check fund-check" value="KCPIF"><span>KCPIF (Property Investment)</span></label>
+
+          <!-- Sector -->
+          <p class="filter-group-title">Sector / Real Estate Type</p>
+          <label class="filter-row"><input type="checkbox" class="vault-check sector-check" value="affordable"><span>Affordable Housing</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check sector-check" value="landservicing"><span>Residential Land Servicing</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check sector-check" value="mixeduse"><span>Residential &amp; Commercial Mixed-Use</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check sector-check" value="rental"><span>Rental Apartments</span></label>
+
+          <!-- Region -->
+          <p class="filter-group-title">Region</p>
+          <label class="filter-row"><input type="checkbox" class="vault-check region-check" value="windhoek"><span>Windhoek (Khomas)</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check region-check" value="erongo"><span>Swakopmund &amp; Walvis Bay (Erongo)</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check region-check" value="otjiwarongo"><span>Otjiwarongo &amp; Okahandja</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check region-check" value="hubs"><span>Northern &amp; Southern Hubs</span></label>
+
+          <!-- Status -->
+          <p class="filter-group-title">Status</p>
+          <label class="filter-row"><input type="checkbox" class="vault-check status-check" value="active"><span>Under Construction / Active</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check status-check" value="stabilised"><span>Stabilised / Income</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check status-check" value="exited"><span>Exited / Completed</span></label>
+          <label class="filter-row"><input type="checkbox" class="vault-check status-check" value="pipeline"><span>Pipeline / Prospective</span></label>
+
+          <button id="resetFiltersBtnBottom" type="button" class="mt-6 w-full text-center text-sm font-semibold text-forestDeep bg-sand hover:bg-sandDk hover:text-white border border-sand rounded-md py-2.5 transition-colors">
+            Reset Filters
+          </button>
+        </aside>
+
+        <!-- RESULTS -->
+        <div>
+          <div class="bg-white rounded-xl shadow-sm border border-line p-6 lg:p-8">
+
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <h2 class="font-display font-medium text-3xl text-ink">Investment Portfolio</h2>
+              <div class="flex items-center gap-4 flex-wrap">
+                <label class="flex items-center gap-2 text-sm text-ink">
+                  Sort:
+                  <select id="sortFilter" class="kc-select bg-white border border-line rounded-md pl-3 pr-8 py-2 text-sm text-ink focus:border-sandDk outline-none">
+                    <option value="default">Featured</option>
+                    <option value="irr">Highest IRR</option>
+                    <option value="value">Project Value</option>
+                    <option value="pct">Completion %</option>
+                  </select>
+                </label>
+                <div class="flex items-center gap-2 text-sm text-slate">
+                  <span>View:</span>
+                  <button id="gridViewBtn" aria-label="Grid view" aria-pressed="true" class="view-btn w-8 h-8 flex items-center justify-center rounded-md text-forestDeep bg-linen">
+                    <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                  </button>
+                  <button id="tableViewBtn" aria-label="Institutional table view" aria-pressed="false" class="view-btn w-8 h-8 flex items-center justify-center rounded-md text-slate/60 hover:bg-linen transition-colors">
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grid -->
+            <div id="propertyGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-7"></div>
+
+            <!-- Institutional table view -->
+            <div id="tableWrap" class="hidden overflow-x-auto mt-7">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="text-left text-xs text-slate uppercase tracking-wide border-b border-line">
+                    <th class="py-3 pr-4">Project</th>
+                    <th class="py-3 pr-4">Fund</th>
+                    <th class="py-3 pr-4">Region</th>
+                    <th class="py-3 pr-4">Status</th>
+                    <th class="py-3 pr-4 text-right">IRR</th>
+                    <th class="py-3 pr-4 text-right">Yield / Rate</th>
+                    <th class="py-3 pr-4 text-right">Deal Size</th>
+                    <th class="py-3 pr-4"></th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+
+            <div id="emptyState" class="hidden flex-col items-center justify-center text-center py-20">
+              <i data-lucide="search-x" class="w-9 h-9 text-slate/50 mb-4"></i>
+              <p class="font-display text-lg text-ink mb-1">No assets match those filters</p>
+              <p class="text-sm text-slate">Clear a filter or broaden your search to see more of the portfolio.</p>
+            </div>
+          </div>
+
+          <!-- Footprint map -->
+          <div id="strategy" class="bg-white rounded-xl shadow-sm border border-line p-6 lg:p-8 mt-8">
+            <h2 class="font-display font-medium text-2xl text-ink mb-1">Regional Footprint</h2>
+            <p class="text-sm text-slate mb-5">Click a marker to filter the portfolio by town or region.</p>
+            <div id="leafletMap"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-forestDeep border-t border-white/10">
+    <div class="max-w-[1440px] mx-auto px-6 lg:px-10 py-12">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+        <div>
+          <p class="font-display font-semibold text-xl tracking-[0.1em] text-white">KÖNIGSTEIN CAPITAL</p>
+          <p class="text-xs text-white/50 mt-3 max-w-md leading-relaxed">
+            This page is illustrative and for informational purposes only. Status, completion percentages, unit counts
+            and realised IRRs shown reflect Königstein's internal KAHF and KCPIF registers as summarised by the fund
+            manager. Deal size, valuation, area, capital-structure, MOIC and target-IRR figures not explicitly
+            confirmed are illustrative estimates for display purposes and do not constitute investment advice or an
+            offer to sell any security.
+          </p>
+        </div>
+        <div class="text-xs text-white/60 space-y-1.5">
+          <p class="text-sand tracking-[0.2em] text-[10px] font-semibold mb-2">LOCATION</p>
+          <p>Offices &nbsp; 13 Liliencron Street, Windhoek, Namibia</p>
+          <p>Tel &nbsp; +264 61 303 227</p>
+          <p>Email &nbsp; info@konigsteincapital.com</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- =========================================================
+     VIEW 2 — ASSET DEEP-DIVE / DEAL TEAR-SHEET
+     ========================================================= -->
+<div id="view-detail" class="hidden">
+
+  <header class="sticky top-0 z-40 bg-forestDeep border-b border-white/10">
+    <div class="max-w-[1440px] mx-auto px-6 lg:px-10">
+      <div class="flex items-center justify-between h-20">
+        <button id="backToHubBtn" type="button" class="flex items-center gap-2 text-sm font-medium text-white/85 hover:text-white transition-colors">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          Back to Portfolio
+        </button>
+        <a href="#top" class="flex flex-col leading-none">
+          <span class="font-display font-semibold text-lg tracking-[0.12em] text-white">KÖNIGSTEIN</span>
+          <span class="font-sans text-[8px] tracking-[0.4em] text-sand">CAPITAL</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="view-fade bg-linen">
+    <div class="max-w-[1440px] mx-auto px-6 lg:px-10 py-8">
+
+      <!-- Compact panoramic media banner with overlaid title -->
+      <div class="mb-4">
+        <div class="relative rounded-2xl overflow-hidden border border-line shadow-lg h-[220px] lg:h-[320px] bg-forest">
+          <img id="panoramicImg" src="" alt="" class="w-full h-full object-cover cursor-pointer" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80';" />
+          <div class="hero-scrim absolute inset-0"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-5 lg:p-7">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span id="detailFundPill" class="glass-badge text-[10px] font-bold tracking-wide px-3 py-1 rounded-full text-sand"></span>
+              <span id="detailStatusPill" class="glass-badge text-[10px] font-bold tracking-wide px-3 py-1 rounded-full text-white"></span>
+            </div>
+            <h1 id="detailTitle" class="font-display font-medium text-2xl lg:text-3xl text-white leading-tight"></h1>
+            <p id="detailLocation" class="mt-1.5 flex items-center gap-1.5 text-white/80 text-sm"></p>
+          </div>
+        </div>
+        <div id="thumbRow" class="grid grid-cols-4 gap-3 mt-3"></div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-8 items-start">
+
+        <!-- LEFT COLUMN -->
+        <div class="lg:col-span-2 space-y-8">
+
+          <div class="bg-white rounded-xl border border-line shadow-sm p-6 lg:p-8">
+            <h2 class="font-display text-2xl text-ink mb-3">Project Overview</h2>
+            <p id="detailOverview" class="text-slate leading-relaxed mb-6"></p>
+
+            <p class="text-xs uppercase tracking-wide text-slate mb-3 font-semibold">Key Features</p>
+            <ul id="detailFeatures" class="space-y-2 text-sm text-slate mb-6"></ul>
+
+            <p class="text-xs uppercase tracking-wide text-slate mb-3 font-semibold">Documents</p>
+            <div class="flex flex-wrap gap-3">
+              <button id="btnTearSheetPDF" type="button" class="inline-flex items-center gap-2 text-sm font-semibold text-forestDeep border border-line hover:bg-linen px-4 py-2.5 rounded-md transition-colors">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                Fund Tear-Sheet (PDF)
+              </button>
+              <button id="btnProspectus" type="button" class="inline-flex items-center gap-2 text-sm font-semibold text-forestDeep border border-line hover:bg-linen px-4 py-2.5 rounded-md transition-colors">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                Supplemental Prospectus
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabbed panels -->
+          <div class="bg-white rounded-xl border border-line shadow-sm p-6 lg:p-8">
+            <div class="flex flex-wrap gap-6 border-b border-line mb-6 overflow-x-auto">
+              <button data-tab="scope" class="tab-btn active pb-3 text-sm font-semibold text-slate border-b-2 border-transparent transition-colors whitespace-nowrap">Project Overview &amp; Scope</button>
+              <button data-tab="thesis" class="tab-btn pb-3 text-sm font-semibold text-slate border-b-2 border-transparent transition-colors whitespace-nowrap">Investment Case &amp; Timeline</button>
+              <button data-tab="waterfall" class="tab-btn pb-3 text-sm font-semibold text-slate border-b-2 border-transparent transition-colors whitespace-nowrap">Financial &amp; Capital Stack</button>
+              <button data-tab="esg" class="tab-btn pb-3 text-sm font-semibold text-slate border-b-2 border-transparent transition-colors whitespace-nowrap">Impact &amp; ESG</button>
+            </div>
+
+            <!-- TAB 1: Scope -->
+            <div id="tab-scope" class="tab-panel active">
+              <p id="scopeText" class="text-slate leading-relaxed mb-4"></p>
+              <div class="grid sm:grid-cols-2 gap-4 text-sm">
+                <div class="bg-linen rounded-lg p-4">
+                  <p class="text-xs text-slate mb-1">Sector</p>
+                  <p id="scopeSector" class="font-semibold text-ink"></p>
+                </div>
+                <div class="bg-linen rounded-lg p-4">
+                  <p class="text-xs text-slate mb-1">Unit Mix / Scale</p>
+                  <p id="scopeUnits" class="font-semibold text-ink"></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: Timeline -->
+            <div id="tab-thesis" class="tab-panel">
+              <p class="text-xs uppercase tracking-wide text-slate mb-3 font-semibold">Execution Milestones</p>
+              <ul id="detailMilestones" class="space-y-2.5 text-sm text-slate mb-8"></ul>
+
+              <p class="text-xs uppercase tracking-wide text-slate mb-4 font-semibold">Cash Flow Timeline</p>
+              <div class="cf-timeline mb-2">
+                <div class="cf-node">
+                  <div class="cf-dot"><i data-lucide="arrow-down-to-line" class="w-4 h-4 text-sand"></i></div>
+                  <p class="text-xs font-semibold text-ink">Initial Capital Drawdown</p>
+                  <p id="cfDrawdown" class="text-xs text-slate mt-1 tnum"></p>
+                </div>
+                <div class="cf-node">
+                  <div class="cf-dot"><i data-lucide="refresh-cw" class="w-4 h-4 text-sand"></i></div>
+                  <p class="text-xs font-semibold text-ink">Interim Yield / Interest</p>
+                  <p id="cfInterim" class="text-xs text-slate mt-1"></p>
+                </div>
+                <div class="cf-node">
+                  <div class="cf-dot"><i data-lucide="flag" class="w-4 h-4 text-sand"></i></div>
+                  <p class="text-xs font-semibold text-ink">Capital Return at Exit</p>
+                  <p id="cfExit" class="text-xs text-slate mt-1 tnum"></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: Financial & Capital Stack -->
+            <div id="tab-waterfall" class="tab-panel">
+              <p id="detailWaterfallText" class="text-slate leading-relaxed mb-5"></p>
+              <div class="mb-6">
+                <div class="flex h-3 w-full rounded-full overflow-hidden bg-line">
+                  <div id="capStackEquity" class="h-full bg-sand"></div>
+                  <div id="capStackDebt" class="h-full bg-forest"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate mt-2">
+                  <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sand inline-block"></span>Equity</span>
+                  <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-forest inline-block"></span>Senior Debt</span>
+                </div>
+              </div>
+              <p class="text-xs uppercase tracking-wide text-slate mb-2 font-semibold">Repayment Covenants</p>
+              <ul id="detailCovenants" class="space-y-2 text-sm text-slate list-disc list-inside mb-6"></ul>
+
+              <p class="text-xs uppercase tracking-wide text-slate mb-3 font-semibold">Total Return on Investment</p>
+              <div id="moicWidget" class="moic-widget rounded-xl p-5 text-white">
+                <p id="moicHeadline" class="font-display text-2xl mb-1"></p>
+                <p id="moicNote" class="text-xs text-white/70 leading-relaxed"></p>
+              </div>
+            </div>
+
+            <!-- TAB 4: Impact & ESG -->
+            <div id="tab-esg" class="tab-panel">
+              <div class="grid sm:grid-cols-3 gap-6 mb-5">
+                <div class="bg-linen rounded-lg p-4">
+                  <i data-lucide="home" class="w-5 h-5 text-forestDeep mb-2"></i>
+                  <p id="esgUnits" class="text-sm font-medium text-ink"></p>
+                </div>
+                <div class="bg-linen rounded-lg p-4">
+                  <i data-lucide="hard-hat" class="w-5 h-5 text-forestDeep mb-2"></i>
+                  <p id="esgJobs" class="text-sm font-medium text-ink"></p>
+                </div>
+                <div class="bg-linen rounded-lg p-4">
+                  <i data-lucide="shield-check" class="w-5 h-5 text-forestDeep mb-2"></i>
+                  <p id="esgGreen" class="text-sm font-medium text-ink"></p>
+                </div>
+              </div>
+              <p id="esgNotes" class="text-sm text-slate leading-relaxed"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="lg:sticky lg:top-24 space-y-5">
+          <div class="floating-card bg-white rounded-xl border border-line shadow-lg p-6">
+            <p class="text-xs text-slate mb-1">Total Facility / Deal Size</p>
+            <p id="figDealSize" class="tnum font-display text-3xl text-ink mb-4"></p>
+
+            <div class="flex items-baseline justify-between text-xs mb-1.5">
+              <span class="text-slate">Completion</span>
+              <span id="figPctLabel" class="tnum font-semibold text-sandDk"></span>
+            </div>
+            <div class="h-2 w-full bg-line rounded-full overflow-hidden mb-5">
+              <div id="figProgressBar" class="h-full bg-sand rounded-full transition-all duration-700"></div>
+            </div>
+
+            <div class="space-y-3 text-sm border-t border-line pt-4 mb-5">
+              <div class="flex items-center justify-between">
+                <span class="text-slate">Hold Period / Maturity</span>
+                <span id="figHold" class="font-semibold text-ink text-right max-w-[55%]"></span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate">Target / Realised IRR</span>
+                <span id="figIRR" class="tnum font-semibold text-ink"></span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate" id="figYieldLabel">Lending Rate / Yield</span>
+                <span id="figYield" class="tnum font-semibold text-ink"></span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate">Valuation</span>
+                <span id="figValuation" class="tnum font-semibold text-ink"></span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate">Co-Investment</span>
+                <span id="figCoInvest" class="tnum font-semibold text-ink text-right max-w-[55%]"></span>
+              </div>
+            </div>
+
+            <button id="btnInquire" type="button" class="inline-flex items-center justify-center gap-2 w-full text-sm font-semibold text-white bg-forestDeep hover:bg-forest px-4 py-3.5 rounded-md transition-colors">
+              <i data-lucide="mail" class="w-4 h-4"></i>
+              Inquire / Request Data Room
+            </button>
+            <p class="text-center text-[11px] text-slate mt-3">Requires investor verification via the Investor Portal.</p>
+          </div>
+
+          <!-- Investor Relations contact card -->
+          <div class="bg-forestDeep rounded-xl p-6 text-white">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <i data-lucide="headset" class="w-5 h-5 text-sand"></i>
+              </span>
+              <div>
+                <p class="font-display text-lg leading-tight">Investor Relations</p>
+                <p class="text-xs text-white/60">Königstein Capital</p>
+              </div>
+            </div>
+            <p class="text-xs text-white/70 leading-relaxed mb-4">
+              For deal-specific questions, data room access or co-investment terms, reach the
+              Königstein Capital investor relations desk directly.
+            </p>
+            <div class="text-xs text-white/80 space-y-1 mb-4">
+              <p class="flex items-center gap-2"><i data-lucide="phone" class="w-3.5 h-3.5 text-sand"></i>+264 61 303 227</p>
+              <p class="flex items-center gap-2"><i data-lucide="mail" class="w-3.5 h-3.5 text-sand"></i>info@konigsteincapital.com</p>
+            </div>
+            <a id="btnContactIR" href="#" class="inline-flex items-center justify-center gap-2 w-full text-xs font-semibold text-forestDeep bg-sand hover:bg-white px-4 py-2.5 rounded-md transition-colors">
+              Contact Investor Relations
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN LIGHTBOX MODAL -->
+<div id="lightbox" class="hidden fixed inset-0 z-[100] bg-forestDeep/95 backdrop-blur-sm flex flex-col items-center justify-center">
+  <button id="lightboxClose" type="button" aria-label="Close" class="absolute top-5 right-5 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+    <i data-lucide="x" class="w-5 h-5"></i>
+  </button>
+
+  <p id="lightboxCounter" class="absolute top-6 left-1/2 -translate-x-1/2 text-white/80 text-sm tracking-wide"></p>
+
+  <button id="lightboxPrev" type="button" aria-label="Previous photo" class="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+  </button>
+  <button id="lightboxNext" type="button" aria-label="Next photo" class="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+  </button>
+
+  <div class="max-w-5xl w-full px-16 flex-1 flex items-center justify-center">
+    <img id="lightboxImg" src="" alt="" class="max-h-[70vh] max-w-full object-contain rounded-lg shadow-2xl" />
+  </div>
+
+  <div id="lightboxThumbs" class="thumb-strip flex gap-2 pb-6 pt-2 px-6 overflow-x-auto max-w-full"></div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-forestDeep text-white text-sm px-5 py-3 rounded-lg shadow-lg max-w-sm text-center"></div>
+
+<script id="assets-data" type="application/json">
+[
+  {
+    "id": "otjomuise",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Otjomuise Lifestyle Estate (MPG / Heaven's Ark)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Erf 864, Otjomuise Ext 4 / Ext 10, Windhoek",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": 556,
+    "unitsDisplay": "556 units",
+    "areaM2": 47260,
+    "irr": 18.57,
+    "irrType": "Realised",
+    "metric2Label": "Blended Facility Rate",
+    "metric2Value": "13–17% NACM",
+    "dealSize": 65000000,
+    "equityInvested": 0,
+    "debtFacility": 65000000,
+    "equityPct": 0,
+    "valuation": 0,
+    "coInvest": "N/A — Senior Secured",
+    "holdPeriod": "33 months (Jun 2018 – Mar 2021)",
+    "exitMultiple": "1.13x MOIC",
+    "moicNumeric": 1.16,
+    "secondary": "Facility matured Mar 2021 · 1.13x MOIC",
+    "images": [
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5601_profile.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/176.JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/178.JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/182 (1).JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/182.JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/185.JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/193.JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/196.JPG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5611.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5615.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5624.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5628.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5876.PNG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/IMG_5878.PNG",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/PHOTO-2018-11-09-13-29-11 (5).jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/PHOTO-2019-04-17-12-00-27 (1).jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/PHOTO-2019-04-17-12-00-27.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/PHOTO-2019-04-17-12-00-28 (1).jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/PHOTO-2019-04-17-12-00-28.jpg",
+      "./KAHF Portfolio Images/Otjomuise Lifestyle (MPG)/PHOTO-2019-05-01-20-08-45.jpg"
+    ],
+    "overview": "Otjomuise Lifestyle Estate (MPG / Heaven's Ark) is an affordable housing (sectional/freehold) project located in Erf 864, Otjomuise Ext 4 / Ext 10, Windhoek, fully completed, with the fund's position realised and exited. The project comprises approximately 556 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 18.57% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 0% KAHF equity/mezzanine capital ahead of a 100% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "556 units housing units delivered",
+    "esgJobs": "Approx. 100 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "erf1470",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Erf 1470 Khomasdal",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Erf 1470, Khomasdal, Windhoek",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "41.0% COMPLETE",
+    "pct": 41.0,
+    "units": 255,
+    "unitsDisplay": "255 units",
+    "areaM2": 7140,
+    "irr": 5.41,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15% NACM",
+    "dealSize": 63500000,
+    "equityInvested": 7000000,
+    "debtFacility": 21000000,
+    "equityPct": 25,
+    "valuation": 40105521,
+    "coInvest": "25% sponsor equity",
+    "holdPeriod": "Target hold: 24–30 months",
+    "exitMultiple": "Projected 1.35x MOIC",
+    "moicNumeric": 0.81,
+    "secondary": "40.6% complete",
+    "images": [
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/IMG_4862_profile.jpeg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/20201016_084543.jpg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/20201016_084548.jpg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/20201016_084600.jpg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/IMG_4861.jpeg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/IMG_4870.jpeg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/IMG_4872.jpeg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/IMG_4876 - Copy.jpeg",
+      "./KAHF Portfolio Images/Khomasdal Erf 1470/IMG_8579.jpg"
+    ],
+    "overview": "Erf 1470 Khomasdal is an affordable housing (sectional/freehold) project located in Erf 1470, Khomasdal, Windhoek, currently under construction and 40.6% complete. The project comprises approximately 84 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Bulk services and civil works commenced",
+      "Construction 40.6% complete as at latest site inspection",
+      "Target completion: phased handover on reaching practical completion"
+    ],
+    "waterfallText": "Illustrative capital stack: 25% KAHF equity/mezzanine capital ahead of a 75% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Minimum pre-sales / pre-commitment threshold before final drawdown tranche"
+    ],
+    "esgUnits": "84 units housing units delivered",
+    "esgJobs": "Approx. 65 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "nkurenkuru",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Nkurenkuru Extension 2 Phase 2 (Lithon)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Nkurenkuru, Kavango West",
+    "status": "active",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "89.0% COMPLETE",
+    "pct": 89.0,
+    "units": 37,
+    "unitsDisplay": "37 units",
+    "areaM2": 10200,
+    "irr": 30.11,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "14.5% NACM",
+    "dealSize": 5500000,
+    "equityInvested": 6200000,
+    "debtFacility": 24800000,
+    "equityPct": 20,
+    "valuation": 1037365,
+    "coInvest": "20% sponsor equity",
+    "holdPeriod": "Settlement / handover phase",
+    "exitMultiple": "Projected 1.3x MOIC",
+    "moicNumeric": 0.19,
+    "secondary": "100% built · settlement pending",
+    "images": [
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.06.14 (1)_profile.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.52 (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.52.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.53 (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.53 (2).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.53.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.54 (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.55.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.05.56.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.06.14.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-02-09 at 13.06.16.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-04-25 at 11.48.06 (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-04-25 at 11.48.06.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 2(Lithon)/WhatsApp Image 2023-04-25 at 11.50.37.jpeg"
+    ],
+    "overview": "Nkurenkuru Extension 2 Phase 2 (Lithon) is an affordable housing (sectional/freehold) project located in Nkurenkuru, Kavango West, substantially complete and in its handover / stabilisation phase. The project comprises approximately 120 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Construction / servicing works substantially complete",
+      "Occupancy and unit handovers underway",
+      "Remaining units in active transfer and settlement process"
+    ],
+    "waterfallText": "Illustrative capital stack: 20% KAHF equity/mezzanine capital ahead of a 80% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "120 units housing units delivered",
+    "esgJobs": "Approx. 90 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "lih",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Labour Investment Holdings (LIH)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Nkurenkuru Phase 1, Kavango West",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": 50,
+    "unitsDisplay": "50 units",
+    "areaM2": 4250,
+    "irr": 10.98,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "14–16% NACM",
+    "dealSize": 18000000,
+    "equityInvested": 1750000,
+    "debtFacility": 15750000,
+    "equityPct": 10,
+    "valuation": 1197968,
+    "coInvest": "N/A — Senior Secured",
+    "holdPeriod": "24 months",
+    "exitMultiple": "1.15x MOIC",
+    "moicNumeric": 1.18,
+    "secondary": "Facility realised · 13.64% IRR",
+    "images": [
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.49.30_profile.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/351bd0a0-f157-420a-81d4-c535d8f08abc.JPG",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/f122e87d-2275-45e5-811d-597ddd1a72f4.JPG",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/PHOTO-2019-07-19-16-58-06 (1).jpg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.50 AM (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.50 AM.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.52 AM.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.53 AM (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.53 AM.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.54 AM (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.54 AM.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.55 AM (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.55 AM (2).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2018-10-04 at 8.37.55 AM (3).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.48.38.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.48.59.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.49.05.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.49.24.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.49.27 (1).jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.49.27.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.49.29.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.51.29.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.51.34.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.51.40.jpeg",
+      "./KAHF Portfolio Images/Nkurenkuru Ext 2 Phase 1 (LIH)/WhatsApp Image 2023-06-28 at 07.51.51.jpeg"
+    ],
+    "overview": "Labour Investment Holdings (LIH) is an affordable housing development in Nkurenkuru Phase 1, Kavango West, fully completed, with the fund's position realised and exited. The project comprises approximately 50 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 13.64% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 10% KAHF equity/mezzanine capital ahead of a 90% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "50 units housing units delivered",
+    "esgJobs": "Approx. 38 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "dumatau_krohnlein",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Duma Tau (Krohnlein)",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Krohnlein, Keetmanshoop",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "95 serviced plots",
+    "areaM2": 38000,
+    "irr": 12.89,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13–15% NACM",
+    "dealSize": 28000000,
+    "equityInvested": 1400000,
+    "debtFacility": 12600000,
+    "equityPct": 10,
+    "valuation": 1197995,
+    "coInvest": "N/A — Senior Secured",
+    "holdPeriod": "22 months",
+    "exitMultiple": "1.09x MOIC",
+    "moicNumeric": 1.21,
+    "secondary": "Facility realised · 11.61% IRR",
+    "images": [
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-11-50_profile.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/130 Unit - Keetmanshoop - Kronlein.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/IMG_6129 (1).jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/IMG_6131 (1).jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/IMG_6140 (1).jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-04-54.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-05-19.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-07-33.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-12-25.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-14-10.jpg",
+      "./KAHF Portfolio Images/Duma Tau Kronlein/PHOTO-2018-07-14-08-14-38.jpg"
+    ],
+    "overview": "Duma Tau (Krohnlein) is a residential land servicing project located in Krohnlein, Keetmanshoop, fully completed, with the fund's position realised and exited. The project comprises approximately 95 serviced plots. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 11.61% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 10% KAHF equity/mezzanine capital ahead of a 90% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "Approx. 95 serviced plots serviced residential plots enabled",
+    "esgJobs": "Approx. 30 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "turnstone",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Turnstone Villas (Erf 8939)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "erongo",
+    "regionLabel": "Swakopmund & Walvis Bay (Erongo)",
+    "location": "Erf 8939, Swakopmund, Erongo",
+    "status": "exited",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "100% BUILT",
+    "pct": 100.0,
+    "units": 17,
+    "unitsDisplay": "17 units",
+    "areaM2": 3060,
+    "irr": -10.6,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "14.5% NACM",
+    "dealSize": 16300000,
+    "equityInvested": 2430000,
+    "debtFacility": 13770000,
+    "equityPct": 15,
+    "valuation": 4911828,
+    "coInvest": "15% sponsor equity",
+    "holdPeriod": "Handover phase",
+    "exitMultiple": "Projected 1.25x MOIC",
+    "moicNumeric": 0.3,
+    "secondary": "100% complete",
+    "images": [
+      "./KAHF Portfolio Images/Turnstone Images/571123318_840457111908500_8592715614274213622_profile.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571125957_840457741908437_4651058177107146505_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571134927_840457398575138_1022534054718416794_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571153282_840457321908479_7344243198191005892_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571195300_840458145241730_6893119251574008155_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571228376_840457121908499_8548480151825649670_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571265676_840457338575144_5908372613163873180_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571335029_840458551908356_1446977953937020035_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571352044_840458538575024_4582074616592453679_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571356738_840457098575168_660798819553834024_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/571641314_840458058575072_2580631539909771973_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/572019159_840458258575052_8155139337014691006_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/572031521_840458671908344_5570896947307921811_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/577831213_1266099355555125_7184985413637549255_n.jpg",
+      "./KAHF Portfolio Images/Turnstone Images/579116632_1266099135555147_4443927192265847387_n.jpg"
+    ],
+    "overview": "Turnstone Villas (Erf 8939) is an affordable housing (sectional/freehold) project located in Erf 8939, Swakopmund, Erongo, substantially complete and in its handover / stabilisation phase. The project comprises approximately 36 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Construction / servicing works substantially complete",
+      "Occupancy and unit handovers underway",
+      "Remaining units in active transfer and settlement process"
+    ],
+    "waterfallText": "Illustrative capital stack: 15% KAHF equity/mezzanine capital ahead of a 85% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "36 units housing units delivered",
+    "esgJobs": "Approx. 32 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "cbreeze",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "C-Breeze Heights Development",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "erongo",
+    "regionLabel": "Swakopmund & Walvis Bay (Erongo)",
+    "location": "Swakopmund, Erongo",
+    "status": "active",
+    "statusLabel": "Pipeline / Prospective",
+    "statusBadge": "PLACEHOLDER",
+    "pct": 0,
+    "units": 13,
+    "unitsDisplay": "13 units",
+    "areaM2": 0,
+    "irr": 18.0,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "TBC",
+    "dealSize": 5000000,
+    "equityInvested": 0,
+    "debtFacility": 0,
+    "equityPct": 0,
+    "valuation": 4822787,
+    "coInvest": "TBC",
+    "holdPeriod": "TBC",
+    "exitMultiple": "TBC",
+    "moicNumeric": 1.1,
+    "secondary": "PLACEHOLDER DATA",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder] C-Breeze Heights Development is a prospective KAHF project. Data pending integration.",
+    "milestones": [
+      "Data pending integration"
+    ],
+    "waterfallText": "Data pending integration.",
+    "covenants": [
+      "Data pending integration"
+    ],
+    "esgUnits": "TBC",
+    "esgJobs": "TBC",
+    "esgGreen": "TBC",
+    "esgNotes": "Placeholder entry."
+  },
+  {
+    "id": "dunescape",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Damask Erf 5159 (Dunescape Villas)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "erongo",
+    "regionLabel": "Swakopmund & Walvis Bay (Erongo)",
+    "location": "Swakopmund, Erongo",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "PLACEHOLDER · EXITED",
+    "pct": 100.0,
+    "units": 40,
+    "unitsDisplay": "40 units",
+    "areaM2": 4080,
+    "irr": 36.03,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15% NACM",
+    "dealSize": 39000000,
+    "equityInvested": 2925000,
+    "debtFacility": 16575000,
+    "equityPct": 15,
+    "valuation": 12958884,
+    "coInvest": "15% sponsor equity",
+    "holdPeriod": "26 months",
+    "exitMultiple": "1.28x MOIC",
+    "moicNumeric": 1.45,
+    "secondary": "PLACEHOLDER DATA · fully sold",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder images] Damask Erf 5159 (Dunescape Villas) is an affordable housing project. Actual site photos pending.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 16.9% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 15% KAHF equity/mezzanine capital ahead of a 85% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "48 units housing units delivered",
+    "esgJobs": "Approx. 40 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "mondesa",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Mondesa Palms (Erf 4420-22)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "erongo",
+    "regionLabel": "Swakopmund & Walvis Bay (Erongo)",
+    "location": "Mondesa, Swakopmund, Erongo",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "15.0% COMPLETE",
+    "pct": 15.0,
+    "units": 134,
+    "unitsDisplay": "134 units",
+    "areaM2": 5440,
+    "irr": 18.94,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15.5% NACM",
+    "dealSize": 28000000,
+    "equityInvested": 6125000,
+    "debtFacility": 18375000,
+    "equityPct": 25,
+    "valuation": 12958884,
+    "coInvest": "25% sponsor equity",
+    "holdPeriod": "Target hold: 30–36 months",
+    "exitMultiple": "Projected 1.32x MOIC",
+    "moicNumeric": 0.86,
+    "secondary": "PLACEHOLDER DATA · early construction",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder images] Mondesa Palms (Erf 4420-22) is an affordable housing project. Actual site photos pending.",
+    "milestones": [
+      "Bulk services and civil works commenced",
+      "Construction 10% complete as at latest site inspection",
+      "Target completion: phased handover on reaching practical completion"
+    ],
+    "waterfallText": "Illustrative capital stack: 25% KAHF equity/mezzanine capital ahead of a 75% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Minimum pre-sales / pre-commitment threshold before final drawdown tranche"
+    ],
+    "esgUnits": "64 units housing units delivered",
+    "esgJobs": "Approx. 48 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "pamtree",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "PAM Tree (Erf 5758)",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "erongo",
+    "regionLabel": "Swakopmund & Walvis Bay (Erongo)",
+    "location": "Erf 5758, Walvis Bay, Erongo",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "PLACEHOLDER",
+    "pct": 40,
+    "units": 189,
+    "unitsDisplay": "189 units",
+    "areaM2": 48000,
+    "irr": 24.0,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13.5% NACM",
+    "dealSize": 45000000,
+    "equityInvested": 4400000,
+    "debtFacility": 17600000,
+    "equityPct": 20,
+    "valuation": 35672548,
+    "coInvest": "20% sponsor equity",
+    "holdPeriod": "Target hold: 30 months",
+    "exitMultiple": "Projected 1.3x MOIC",
+    "moicNumeric": 0.79,
+    "secondary": "PLACEHOLDER DATA · 40% complete",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder images] PAM Tree (Erf 5758) is a residential land servicing project. Actual site photos pending.",
+    "milestones": [
+      "Bulk services and civil works commenced",
+      "Construction 40% complete as at latest site inspection",
+      "Target completion: phased handover on reaching practical completion"
+    ],
+    "waterfallText": "Illustrative capital stack: 20% KAHF equity/mezzanine capital ahead of a 80% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Minimum pre-sales / pre-commitment threshold before final drawdown tranche"
+    ],
+    "esgUnits": "Approx. 120 serviced plots serviced residential plots enabled",
+    "esgJobs": "Approx. 55 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "rockycrest",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "The Ridge (Rocky Crest Ext 4)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Rocky Crest Ext 4, Windhoek",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "PLACEHOLDER",
+    "pct": 10,
+    "units": 38,
+    "unitsDisplay": "38 units",
+    "areaM2": 6120,
+    "irr": 18.53,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15.5% NACM",
+    "dealSize": 30000000,
+    "equityInvested": 6750000,
+    "debtFacility": 20250000,
+    "equityPct": 25,
+    "valuation": 13022185,
+    "coInvest": "25% sponsor equity",
+    "holdPeriod": "Target hold: 30–36 months",
+    "exitMultiple": "Projected 1.33x MOIC",
+    "moicNumeric": 0.65,
+    "secondary": "PLACEHOLDER DATA · 10% complete",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder images] The Ridge (Rocky Crest Ext 4) is an affordable housing project. Actual site photos pending.",
+    "milestones": [
+      "Bulk services and civil works commenced",
+      "Construction 10% complete as at latest site inspection",
+      "Target completion: phased handover on reaching practical completion"
+    ],
+    "waterfallText": "Illustrative capital stack: 25% KAHF equity/mezzanine capital ahead of a 75% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Minimum pre-sales / pre-commitment threshold before final drawdown tranche"
+    ],
+    "esgUnits": "72 units housing units delivered",
+    "esgJobs": "Approx. 52 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "tama",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "TAMA Estates",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "erongo",
+    "regionLabel": "Swakopmund & Walvis Bay (Erongo)",
+    "location": "Swakopmund, Erongo",
+    "status": "active",
+    "statusLabel": "Pipeline / Prospective",
+    "statusBadge": "PLACEHOLDER",
+    "pct": 0,
+    "units": 87,
+    "unitsDisplay": "87 units",
+    "areaM2": 0,
+    "irr": 20.8,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "TBC",
+    "dealSize": 11000000,
+    "equityInvested": 0,
+    "debtFacility": 0,
+    "equityPct": 0,
+    "valuation": 5249926,
+    "coInvest": "TBC",
+    "holdPeriod": "TBC",
+    "exitMultiple": "TBC",
+    "moicNumeric": 1.18,
+    "secondary": "PLACEHOLDER DATA",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder] TAMA Estates is a prospective KAHF project. Data pending integration.",
+    "milestones": [
+      "Data pending integration"
+    ],
+    "waterfallText": "Data pending integration.",
+    "covenants": [
+      "Data pending integration"
+    ],
+    "esgUnits": "TBC",
+    "esgJobs": "TBC",
+    "esgGreen": "TBC",
+    "esgNotes": "Placeholder entry."
+  },
+  {
+    "id": "otjomuise_ext",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Otjomuise Extension (Erf 5227-5245)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Otjomuise Extension, Windhoek",
+    "status": "pipeline",
+    "statusLabel": "Pipeline / Prospective",
+    "statusBadge": "PLACEHOLDER",
+    "pct": 0,
+    "units": null,
+    "unitsDisplay": "TBC (placeholder)",
+    "areaM2": 0,
+    "irr": 0.0,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "TBC",
+    "dealSize": 0,
+    "equityInvested": 0,
+    "debtFacility": 0,
+    "equityPct": 0,
+    "valuation": 0,
+    "coInvest": "TBC",
+    "holdPeriod": "TBC",
+    "exitMultiple": "TBC",
+    "moicNumeric": null,
+    "secondary": "PLACEHOLDER DATA",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder] Otjomuise Extension (Erf 5227-5245) is a prospective KAHF project. Data pending integration.",
+    "milestones": [
+      "Data pending integration"
+    ],
+    "waterfallText": "Data pending integration.",
+    "covenants": [
+      "Data pending integration"
+    ],
+    "esgUnits": "TBC",
+    "esgJobs": "TBC",
+    "esgGreen": "TBC",
+    "esgNotes": "Placeholder entry."
+  },
+  {
+    "id": "lavender",
+    "fund": "KAHF",
+    "fundLabel": "KAHF · Königstein Affordable Housing Fund",
+    "name": "Lavender Court",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Windhoek, Khomas",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "PLACEHOLDER · EXITED",
+    "pct": 100,
+    "units": 60,
+    "unitsDisplay": "60 units",
+    "areaM2": 5100,
+    "irr": 17.87,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15–17% NACM",
+    "dealSize": 21000000,
+    "equityInvested": 2100000,
+    "debtFacility": 18900000,
+    "equityPct": 10,
+    "valuation": 25500000,
+    "coInvest": "N/A — Senior Secured",
+    "holdPeriod": "28 months",
+    "exitMultiple": "1.24x MOIC",
+    "moicNumeric": 1.24,
+    "secondary": "PLACEHOLDER DATA",
+    "images": [
+      "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "overview": "[Illustrative placeholder images] Lavender Court is an affordable housing project fully completed, with the fund's position realised and exited. Actual site photos pending.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 17.87% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 10% KAHF equity/mezzanine capital ahead of a 90% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "60 units housing units delivered",
+    "esgJobs": "Approx. 45 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "lazarett",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "51 on Lazarett",
+    "sector": "mixeduse",
+    "sectorLabel": "Residential & Commercial Mixed-Use",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "51 Lazarett Street, Windhoek",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": 51,
+    "unitsDisplay": "51 units",
+    "areaM2": 5610,
+    "irr": 14.2,
+    "irrType": "Realised",
+    "metric2Label": "Net Yield",
+    "metric2Value": "8.6%",
+    "dealSize": 20500000,
+    "equityInvested": 6150000,
+    "debtFacility": 14350000,
+    "equityPct": 30,
+    "valuation": 23800000,
+    "coInvest": "30% sponsor equity",
+    "holdPeriod": "Completed",
+    "exitMultiple": "1.24x MOIC",
+    "moicNumeric": 1.24,
+    "secondary": "Completed",
+    "images": [
+      "./KCPIF Images/51 on Lazarett/20170427_100458_profile.jpg",
+      "./KCPIF Images/51 on Lazarett/20170427_090051.jpg",
+      "./KCPIF Images/51 on Lazarett/20170427_090314.jpg",
+      "./KCPIF Images/51 on Lazarett/33 Units - Windhoek - 51 on Lazarett.jpg"
+    ],
+    "overview": "51 on Lazarett is a residential & commercial mixed-use project located in 51 Lazarett Street, Windhoek, fully completed, with the fund's position realised and exited. The project comprises approximately 51 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 14.2% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "51 units housing units delivered",
+    "esgJobs": "Approx. 9 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "beethoven",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Beethoven Heights",
+    "sector": "mixeduse",
+    "sectorLabel": "Residential & Commercial Mixed-Use",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Beethoven Street, Windhoek",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": 48,
+    "unitsDisplay": "48 units",
+    "areaM2": 5280,
+    "irr": 13.9,
+    "irrType": "Realised",
+    "metric2Label": "Net Yield",
+    "metric2Value": "8.4%",
+    "dealSize": 19000000,
+    "equityInvested": 5700000,
+    "debtFacility": 13300000,
+    "equityPct": 30,
+    "valuation": 22000000,
+    "coInvest": "30% sponsor equity",
+    "holdPeriod": "Completed",
+    "exitMultiple": "1.22x MOIC",
+    "moicNumeric": 1.22,
+    "secondary": "Completed",
+    "images": [
+      "./KCPIF Images/Beethoven Heights/20171017_100042_1509615338559_resized_profile.jpg",
+      "./KCPIF Images/Beethoven Heights/20171017_095948_1509615378585_resized.jpg",
+      "./KCPIF Images/Beethoven Heights/20171017_103940_1509615336305_resized.jpg",
+      "./KCPIF Images/Beethoven Heights/70 Units - Windhoek - Beethoven.jpg",
+      "./KCPIF Images/Beethoven Heights/IMG_2291.jpg"
+    ],
+    "overview": "Beethoven Heights is a residential & commercial mixed-use project located in Beethoven Street, Windhoek, fully completed, with the fund's position realised and exited. The project comprises approximately 48 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 13.9% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "48 units housing units delivered",
+    "esgJobs": "Approx. 8 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "citygardens",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "City Gardens",
+    "sector": "rental",
+    "sectorLabel": "Rental Apartments",
+    "region": "otjiwarongo",
+    "regionLabel": "Otjiwarongo & Okahandja",
+    "location": "Otjiwarongo, Otjozondjupa",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "100% BUILT",
+    "pct": 100,
+    "units": 40,
+    "unitsDisplay": "40 units",
+    "areaM2": 2800,
+    "irr": 12.6,
+    "irrType": "Target",
+    "metric2Label": "Net Rental Yield",
+    "metric2Value": "10.1%",
+    "dealSize": 18000000,
+    "equityInvested": 6300000,
+    "debtFacility": 11700000,
+    "equityPct": 35,
+    "valuation": 22500000,
+    "coInvest": "35% sponsor equity",
+    "holdPeriod": "Current — income-producing",
+    "exitMultiple": "Held for income",
+    "moicNumeric": null,
+    "secondary": "Current · rental income",
+    "images": [
+      "./KCPIF Images/City Gardens/69 Unit - Otjiwarongo - City Gardens_profile.jpg",
+      "./KCPIF Images/City Gardens/IMG_4620.jpg",
+      "./KCPIF Images/City Gardens/IMG_4621.jpg",
+      "./KCPIF Images/City Gardens/IMG_4628.jpg",
+      "./KCPIF Images/City Gardens/IMG_4630.jpg",
+      "./KCPIF Images/City Gardens/IMG_4638.jpg"
+    ],
+    "overview": "City Gardens is a rental apartments project located in Otjiwarongo, Otjozondjupa, substantially complete and in its handover / stabilisation phase. The project comprises approximately 40 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Construction / servicing works substantially complete",
+      "Occupancy and unit handovers underway",
+      "Remaining units in active transfer and settlement process"
+    ],
+    "waterfallText": "Illustrative capital stack: 35% KCPIF equity/mezzanine capital ahead of a 65% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "40 units housing units delivered",
+    "esgJobs": "Approx. 12 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "dumatau_omuthiya",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Duma Tau Developers (Omuthiya)",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Omuthiya, Oshikoto",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "70 serviced plots",
+    "areaM2": 28000,
+    "irr": 12.1,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13% NACM",
+    "dealSize": 10800000,
+    "equityInvested": 2160000,
+    "debtFacility": 8640000,
+    "equityPct": 20,
+    "valuation": 12400000,
+    "coInvest": "20% sponsor equity",
+    "holdPeriod": "Completed",
+    "exitMultiple": "1.12x MOIC",
+    "moicNumeric": 1.12,
+    "secondary": "Completed",
+    "images": [
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2019-08-28-09-14-38_profile.jpg",
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2018-11-02-09-33-56.jpg",
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2018-11-02-09-33-57 (1).jpg",
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2018-11-02-09-34-48 (2).jpg",
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2018-11-02-09-34-48.jpg",
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2018-11-02-09-34-49.jpg",
+      "./KCPIF Images/Duma Tau - Omuthiya/PHOTO-2019-08-28-09-03-00.jpg"
+    ],
+    "overview": "Duma Tau Developers (Omuthiya) is a residential land servicing project located in Omuthiya, Oshikoto, fully completed, with the fund's position realised and exited. The project comprises approximately 70 serviced plots. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 12.1% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 20% KCPIF equity/mezzanine capital ahead of a 80% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "Approx. 70 serviced plots serviced residential plots enabled",
+    "esgJobs": "Approx. 24 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "dumatau_tsei",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Duma Tau Developers (Tseiblaagte)",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Tseiblaagte, Keetmanshoop",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "80 serviced plots",
+    "areaM2": 32000,
+    "irr": 12.4,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13% NACM",
+    "dealSize": 11500000,
+    "equityInvested": 2300000,
+    "debtFacility": 9200000,
+    "equityPct": 20,
+    "valuation": 13200000,
+    "coInvest": "20% sponsor equity",
+    "holdPeriod": "Completed",
+    "exitMultiple": "1.14x MOIC",
+    "moicNumeric": 1.14,
+    "secondary": "Completed",
+    "images": [
+      "./KCPIF Images/Duma Tau - Tseiblaagte/20171023_111148_1509615256084_resizedprofile.jpg",
+      "./KCPIF Images/Duma Tau - Tseiblaagte/20171023_103147_1509615301109_resized.jpg",
+      "./KCPIF Images/Duma Tau - Tseiblaagte/20171023_103247_1509615298874_resized.jpg"
+    ],
+    "overview": "Duma Tau Developers (Tseiblaagte) is a residential land servicing project located in Tseiblaagte, Keetmanshoop, fully completed, with the fund's position realised and exited. The project comprises approximately 80 serviced plots. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 12.4% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 20% KCPIF equity/mezzanine capital ahead of a 80% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "Approx. 80 serviced plots serviced residential plots enabled",
+    "esgJobs": "Approx. 26 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "morningside",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Morning Side Village",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Ongwediva, Oshana",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "EXITED",
+    "pct": 100,
+    "units": 32,
+    "unitsDisplay": "32 units",
+    "areaM2": 2720,
+    "irr": 14.6,
+    "irrType": "Realised",
+    "metric2Label": "Net Yield",
+    "metric2Value": "8.8%",
+    "dealSize": 13800000,
+    "equityInvested": 3450000,
+    "debtFacility": 10350000,
+    "equityPct": 25,
+    "valuation": 16400000,
+    "coInvest": "25% sponsor equity",
+    "holdPeriod": "Completed — 8 units transferring",
+    "exitMultiple": "1.2x MOIC",
+    "moicNumeric": 1.2,
+    "secondary": "Completed · 8 units transferring",
+    "images": [
+      "./KCPIF Images/Morning Side/728159781_profile.jpg",
+      "./KCPIF Images/Morning Side/2016-06-14 12.54.46.jpg",
+      "./KCPIF Images/Morning Side/2016-06-28 09.19.05.jpg",
+      "./KCPIF Images/Morning Side/2016-07-12 09.19.47.jpg",
+      "./KCPIF Images/Morning Side/2016-07-12 09.19.49.jpg",
+      "./KCPIF Images/Morning Side/468412571_122202058940061965_7549549292808569747_n.jpg",
+      "./KCPIF Images/Morning Side/468429940_122202059054061965_4534472347928096225_n.jpg",
+      "./KCPIF Images/Morning Side/470538126_122205643976061965_5051509234632255031_n.jpg",
+      "./KCPIF Images/Morning Side/630135952.jpg",
+      "./KCPIF Images/Morning Side/images.jpg",
+      "./KCPIF Images/Morning Side/images2.jpg",
+      "./KCPIF Images/Morning Side/IMG-20160202-WA0010.jpg"
+    ],
+    "overview": "Morning Side Village is an affordable housing (sectional/freehold) project located in Ongwediva, Oshana, fully completed, with the fund's position realised and exited. The project comprises approximately 32 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Facility drawn and capital fully deployed",
+      "Construction and unit sales / servicing completed",
+      "Facility realised — 14.6% Realised IRR to fund investors"
+    ],
+    "waterfallText": "Illustrative capital stack: 25% KCPIF equity/mezzanine capital ahead of a 75% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity. The facility has since been repaid in full and the position realised.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "32 units housing units delivered",
+    "esgJobs": "Approx. 27 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "sturrock",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Sturrock Lofts",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Sturrock Street, Windhoek",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "95% COMPLETE",
+    "pct": 95,
+    "units": 28,
+    "unitsDisplay": "28 units",
+    "areaM2": 2380,
+    "irr": 15.6,
+    "irrType": "Target",
+    "metric2Label": "Net Yield",
+    "metric2Value": "9.0%",
+    "dealSize": 14200000,
+    "equityInvested": 4260000,
+    "debtFacility": 9940000,
+    "equityPct": 30,
+    "valuation": 17300000,
+    "coInvest": "30% sponsor equity",
+    "holdPeriod": "4 units remaining",
+    "exitMultiple": "Projected 1.27x MOIC",
+    "moicNumeric": 1.27,
+    "secondary": "4 units remaining",
+    "images": [
+      "./KCPIF Images/Niilenge - Sturrock Lofts/060_profile.JPG",
+      "./KCPIF Images/Niilenge - Sturrock Lofts/057.JPG",
+      "./KCPIF Images/Niilenge - Sturrock Lofts/058.JPG",
+      "./KCPIF Images/Niilenge - Sturrock Lofts/063.JPG"
+    ],
+    "overview": "Sturrock Lofts is an affordable housing (sectional/freehold) project located in Sturrock Street, Windhoek, substantially complete and in its handover / stabilisation phase. The project comprises approximately 28 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Construction / servicing works substantially complete",
+      "Occupancy and unit handovers underway",
+      "Remaining units in active transfer and settlement process"
+    ],
+    "waterfallText": "Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "28 units housing units delivered",
+    "esgJobs": "Approx. 22 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "gobabis11",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Gobabis Extension 11",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Extension 11, Gobabis",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "75% COMPLETE",
+    "pct": 75,
+    "units": null,
+    "unitsDisplay": "110 serviced plots",
+    "areaM2": 44000,
+    "irr": 13.2,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13% NACM",
+    "dealSize": 15500000,
+    "equityInvested": 3875000,
+    "debtFacility": 11625000,
+    "equityPct": 25,
+    "valuation": 18700000,
+    "coInvest": "25% sponsor equity",
+    "holdPeriod": "Current — exiting",
+    "exitMultiple": "Projected 1.22x MOIC",
+    "moicNumeric": 1.22,
+    "secondary": "Current · exiting",
+    "images": [
+      "./KCPIF Images/Nilenge - Gobabis (Ext 11)/IMG_5967 (1).jpg",
+      "./KCPIF Images/Nilenge - Gobabis (Ext 11)/IMG_5967.jpg",
+      "./KCPIF Images/Nilenge - Gobabis (Ext 11)/IMG_5970 (1).jpg",
+      "./KCPIF Images/Nilenge - Gobabis (Ext 11)/IMG_5970.jpg",
+      "./KCPIF Images/Nilenge - Gobabis (Ext 11)/IMG_5971 (1).jpg",
+      "./KCPIF Images/Nilenge - Gobabis (Ext 11)/IMG_5971.jpg"
+    ],
+    "overview": "Gobabis Extension 11 is a residential land servicing project located in Extension 11, Gobabis, currently under construction and 75% complete. The project comprises approximately 110 serviced plots. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Bulk services and civil works commenced",
+      "Construction 75% complete as at latest site inspection",
+      "Target completion: phased handover on reaching practical completion"
+    ],
+    "waterfallText": "Illustrative capital stack: 25% KCPIF equity/mezzanine capital ahead of a 75% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Minimum pre-sales / pre-commitment threshold before final drawdown tranche"
+    ],
+    "esgUnits": "Approx. 110 serviced plots serviced residential plots enabled",
+    "esgJobs": "Approx. 42 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "riverthorn",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Riverthorn Village",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Windhoek, Khomas",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "99% COMPLETE",
+    "pct": 99,
+    "units": 45,
+    "unitsDisplay": "45 units",
+    "areaM2": 3825,
+    "irr": 14.8,
+    "irrType": "Target",
+    "metric2Label": "Net Yield",
+    "metric2Value": "8.9%",
+    "dealSize": 16800000,
+    "equityInvested": 5040000,
+    "debtFacility": 11760000,
+    "equityPct": 30,
+    "valuation": 20100000,
+    "coInvest": "30% sponsor equity",
+    "holdPeriod": "Final unit in transfer",
+    "exitMultiple": "Projected 1.28x MOIC",
+    "moicNumeric": 1.28,
+    "secondary": "1 unit remaining",
+    "images": [
+      "./KCPIF Images/Riverthorn/83249716_1413753695469059_7301435624286846976_n_profile.jpg",
+      "./KCPIF Images/Riverthorn/83336715_1413752532135842_6980074424464572416_n.jpg",
+      "./KCPIF Images/Riverthorn/eyJidWNrZXQiOiJzMy5lbnRlZ3JhbC5uZXQiLCJrZXkiOiJiL2ZfMDI1NjU3OTRjNTlmNDRmYjhjMTJmZDU1ODlhZDY4NTIuanBnIiwiZm9ybWF0Ijoid2VicCIsImVkaXRzIjp7InJlc2l6ZSI6eyJmaXQiOiJjb3ZlciIsIndpZHRoIjoxMjAwLCJoZWlnaHQiOjgwMH19fQ==.jpg",
+      "./KCPIF Images/Riverthorn/eyJidWNrZXQiOiJzMy5lbnRlZ3JhbC5uZXQiLCJrZXkiOiJiL2ZfY2Y5ZWYxNjEzNTQ2NGU3ZWEyNjIwMjQxN2ZkMjJhZTcuanBnIiwiZm9ybWF0Ijoid2VicCIsImVkaXRzIjp7InJlc2l6ZSI6eyJmaXQiOiJjb3ZlciIsIndpZHRoIjoxMjAwLCJoZWlnaHQiOjgwMH19fQ==.jpg"
+    ],
+    "overview": "Riverthorn Village is an affordable housing (sectional/freehold) project located in Windhoek, Khomas, substantially complete and in its handover / stabilisation phase. The project comprises approximately 45 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Construction / servicing works substantially complete",
+      "Occupancy and unit handovers underway",
+      "Remaining units in active transfer and settlement process"
+    ],
+    "waterfallText": "Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "45 units housing units delivered",
+    "esgJobs": "Approx. 28 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "turahill",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Tura Hill",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "otjiwarongo",
+    "regionLabel": "Otjiwarongo & Okahandja",
+    "location": "Okahandja, Otjozondjupa",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "90% COMPLETE",
+    "pct": 90,
+    "units": 54,
+    "unitsDisplay": "54 units",
+    "areaM2": 4590,
+    "irr": 15.1,
+    "irrType": "Target",
+    "metric2Label": "Net Yield",
+    "metric2Value": "9.4%",
+    "dealSize": 20500000,
+    "equityInvested": 6150000,
+    "debtFacility": 14350000,
+    "equityPct": 30,
+    "valuation": 25000000,
+    "coInvest": "30% sponsor equity",
+    "holdPeriod": "Current — entering exit phase",
+    "exitMultiple": "Projected 1.3x MOIC",
+    "moicNumeric": 1.3,
+    "secondary": "Current · exiting",
+    "images": [
+      "./KCPIF Images/Tura Hill Okahandja/f_911b4eb1822740ee9203e51d0631abba_profile.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/2016-02-02 13.12.50-1.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/2016-04-28 17.42.24-1.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/2016-04-28 17.42.24-7.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/481777512_602885115967105_984980700114093578_n.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/488001220_1063422465807625_8914288725159741361_n.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/dji_fly_20231010_095458_881_1696924579763_photo.JPG",
+      "./KCPIF Images/Tura Hill Okahandja/dji_fly_20231010_095548_889_1696924658196_photo.JPG",
+      "./KCPIF Images/Tura Hill Okahandja/dji_fly_20231010_095554_890_1696924673915_photo.JPG",
+      "./KCPIF Images/Tura Hill Okahandja/dji_fly_20231010_095708_896_1696924698823_photo.JPG",
+      "./KCPIF Images/Tura Hill Okahandja/dji_fly_20231010_095842_893_1696924686962_photo.JPG",
+      "./KCPIF Images/Tura Hill Okahandja/f_03fe6f0cad0740e99756593dd3b4b83b.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/f_ae7a7c82274b42708f48a16459d8d611.jpg",
+      "./KCPIF Images/Tura Hill Okahandja/Picture1.jpg"
+    ],
+    "overview": "Tura Hill is an affordable housing (sectional/freehold) project located in Okahandja, Otjozondjupa, substantially complete and in its handover / stabilisation phase. The project comprises approximately 54 units. The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "Construction / servicing works substantially complete",
+      "Occupancy and unit handovers underway",
+      "Remaining units in active transfer and settlement process"
+    ],
+    "waterfallText": "Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility, with debt service and repayment funded from unit sales or rental proceeds ahead of any residual profit share to equity.",
+    "covenants": [
+      "First-ranking security over the development site and improvements",
+      "Phased draw-down tied to independently verified construction milestones",
+      "Sales or rental proceeds swept directly against outstanding facility balance"
+    ],
+    "esgUnits": "54 units housing units delivered",
+    "esgJobs": "Approx. 35 local construction jobs supported",
+    "esgGreen": "Compliant with local municipal building and services guidelines",
+    "esgNotes": "Contributes to Namibia's national housing and urban land servicing backlog targets."
+  },
+  {
+    "id": "calgrokuumba_otjomuise10",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "CalgroKuumba Otjomuise Extension 10",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Otjomuise Extension 10, Windhoek",
+    "status": "exited",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "PLACEHOLDER · 50% COMPLETE",
+    "pct": 100.0,
+    "units": 17,
+    "unitsDisplay": "17 units",
+    "areaM2": 5100,
+    "irr": 17.91,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "14% NACM (placeholder)",
+    "dealSize": 7000000,
+    "equityInvested": 5500000,
+    "debtFacility": 16500000,
+    "equityPct": 25,
+    "valuation": 0,
+    "coInvest": "25% sponsor equity (placeholder)",
+    "holdPeriod": "Target hold: 24 months (placeholder)",
+    "exitMultiple": "Projected 1.3x MOIC (placeholder)",
+    "moicNumeric": 1.05,
+    "secondary": "PLACEHOLDER DATA · 50% complete",
+    "images": [
+      "./KCPIF Images/CalgroKuumba Otjomuise 10/IMG_8622_profile.jpg",
+      "./KCPIF Images/CalgroKuumba Otjomuise 10/IMG_8256.jpg",
+      "./KCPIF Images/CalgroKuumba Otjomuise 10/IMG_8257.jpg",
+      "./KCPIF Images/CalgroKuumba Otjomuise 10/IMG_8259.jpg",
+      "./KCPIF Images/CalgroKuumba Otjomuise 10/IMG_8619.jpg",
+      "./KCPIF Images/CalgroKuumba Otjomuise 10/IMG_8621.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] CalgroKuumba Otjomuise Extension 10 is a affordable housing (sectional/freehold) project located in Otjomuise Extension 10, Windhoek. The project comprises approximately 60 units (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 25% KCPIF equity/mezzanine capital ahead of a 75% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "60 units (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 45 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "eureka",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Eureka",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "otjiwarongo",
+    "regionLabel": "Otjiwarongo & Okahandja",
+    "location": "Okahandja, Otjozondjupa",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "PLACEHOLDER · EXITED",
+    "pct": 100,
+    "units": 11,
+    "unitsDisplay": "11 units (placeholder)",
+    "areaM2": 935,
+    "irr": 13.5,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "14% NACM (placeholder)",
+    "dealSize": 4500000,
+    "equityInvested": 675000,
+    "debtFacility": 3825000,
+    "equityPct": 15,
+    "valuation": 5400000,
+    "coInvest": "N/A — Senior Secured (placeholder)",
+    "holdPeriod": "Completed (placeholder)",
+    "exitMultiple": "1.15x MOIC (placeholder)",
+    "moicNumeric": 1.15,
+    "secondary": "PLACEHOLDER DATA · Completed",
+    "images": [
+      "./KCPIF Images/Eureka/eefc9756-884c-4f6d-83c7-2f82ce4eaf43_profile.jpg",
+      "./KCPIF Images/Eureka/11 Units - Okahandja - Eureka.jpg",
+      "./KCPIF Images/Eureka/1ef1b29d-2685-48e9-ae69-0667a58a9c4f.jpg",
+      "./KCPIF Images/Eureka/6f682dec-049d-423e-8f6e-bac4b6e778d9.jpg",
+      "./KCPIF Images/Eureka/81da4bd6-7dcf-4190-a03d-7936c6bc2480.jpg",
+      "./KCPIF Images/Eureka/86cca412-0ab4-41ef-9476-5069df6d75b0.jpg",
+      "./KCPIF Images/Eureka/9ed59ea9-6b70-4eb6-bc7a-3079c7cb9211.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Eureka is a affordable housing (sectional/freehold) project located in Okahandja, Otjozondjupa. The project comprises approximately 11 units (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 15% KCPIF equity/mezzanine capital ahead of a 85% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "11 units (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 10 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "heikky",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Heikky",
+    "sector": "mixeduse",
+    "sectorLabel": "Residential & Commercial Mixed-Use",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Windhoek, Khomas (location placeholder)",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "PLACEHOLDER · BUILT",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "Scale not yet confirmed (placeholder)",
+    "areaM2": 1500,
+    "irr": 12.0,
+    "irrType": "Target",
+    "metric2Label": "Net Yield",
+    "metric2Value": "8.0% (placeholder)",
+    "dealSize": 6000000,
+    "equityInvested": 1800000,
+    "debtFacility": 4200000,
+    "equityPct": 30,
+    "valuation": 7300000,
+    "coInvest": "30% sponsor equity (placeholder)",
+    "holdPeriod": "Current — income-producing (placeholder)",
+    "exitMultiple": "Held for income (placeholder)",
+    "moicNumeric": null,
+    "secondary": "PLACEHOLDER DATA · Current · rental income",
+    "images": [
+      "./KCPIF Images/Heikky/20190425_112030.jpg",
+      "./KCPIF Images/Heikky/20190425_113101.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Heikky is a residential & commercial mixed-use project located in Windhoek, Khomas (location placeholder). The project comprises approximately scale not yet confirmed (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "Scale not yet confirmed (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 6 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "hoseakutako",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Hosea Kutako Apartments",
+    "sector": "rental",
+    "sectorLabel": "Rental Apartments",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Windhoek, Khomas (location placeholder)",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "PLACEHOLDER · BUILT",
+    "pct": 100,
+    "units": 16,
+    "unitsDisplay": "16 units (placeholder)",
+    "areaM2": 1360,
+    "irr": 11.5,
+    "irrType": "Target",
+    "metric2Label": "Net Rental Yield",
+    "metric2Value": "9.5% (placeholder)",
+    "dealSize": 8500000,
+    "equityInvested": 2975000,
+    "debtFacility": 5525000,
+    "equityPct": 35,
+    "valuation": 10300000,
+    "coInvest": "35% sponsor equity (placeholder)",
+    "holdPeriod": "Current — income-producing (placeholder)",
+    "exitMultiple": "Held for income (placeholder)",
+    "moicNumeric": null,
+    "secondary": "PLACEHOLDER DATA · Current · rental income",
+    "images": [
+      "./KCPIF Images/Hosea Kutako Apartments/eyJidWNrZXQiOiJzMy5lbnRlZ3JhbC5uZXQiLC_profile.jpg",
+      "./KCPIF Images/Hosea Kutako Apartments/tiktok-photo-7646087348408667412-1.jpeg",
+      "./KCPIF Images/Hosea Kutako Apartments/tiktok-photo-7646087348408667412-2.jpeg",
+      "./KCPIF Images/Hosea Kutako Apartments/tiktok-photo-7646087348408667412-3.jpeg",
+      "./KCPIF Images/Hosea Kutako Apartments/tiktok-photo-7646087348408667412-4.jpeg",
+      "./KCPIF Images/Hosea Kutako Apartments/tiktok-photo-7646087348408667412-5.jpeg",
+      "./KCPIF Images/Hosea Kutako Apartments/tiktok-photo-7646087348408667412-6.jpeg",
+      "./KCPIF Images/Hosea Kutako Apartments/ZyJidWNrZXQiOiJzMy5lbnRlZ3JhbC.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Hosea Kutako Apartments is a rental apartments project located in Windhoek, Khomas (location placeholder). The project comprises approximately 16 units (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 35% KCPIF equity/mezzanine capital ahead of a 65% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "16 units (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 12 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "jedidja",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Jedidja",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Windhoek, Khomas (location placeholder)",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "PLACEHOLDER · 60% COMPLETE",
+    "pct": 60,
+    "units": 20,
+    "unitsDisplay": "20 units (placeholder)",
+    "areaM2": 1700,
+    "irr": 15.5,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15% NACM (placeholder)",
+    "dealSize": 9000000,
+    "equityInvested": 2250000,
+    "debtFacility": 6750000,
+    "equityPct": 25,
+    "valuation": 11000000,
+    "coInvest": "25% sponsor equity (placeholder)",
+    "holdPeriod": "Target hold: 24 months (placeholder)",
+    "exitMultiple": "Projected 1.28x MOIC (placeholder)",
+    "moicNumeric": 1.28,
+    "secondary": "PLACEHOLDER DATA · 60% complete",
+    "images": [
+      "./KCPIF Images/Jedidja/3346630394574387509_profile.jpg",
+      "./KCPIF Images/Jedidja/3346630393198660150.jpg",
+      "./KCPIF Images/Jedidja/3346630393223947233.jpg",
+      "./KCPIF Images/Jedidja/3346630393509061404.jpg",
+      "./KCPIF Images/Jedidja/3346630393894859728.jpg",
+      "./KCPIF Images/Jedidja/3346630394163369337.jpg",
+      "./KCPIF Images/Jedidja/3346630394901528928.jpg",
+      "./KCPIF Images/Jedidja/481996700_977658497841383_6389928111997712678_n.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Jedidja is a affordable housing (sectional/freehold) project located in Windhoek, Khomas (location placeholder). The project comprises approximately 20 units (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 25% KCPIF equity/mezzanine capital ahead of a 75% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "20 units (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 18 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "okamita_osona",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Okamita (Osona Village)",
+    "sector": "affordable",
+    "sectorLabel": "Affordable Housing (Sectional/Freehold)",
+    "region": "otjiwarongo",
+    "regionLabel": "Otjiwarongo & Okahandja",
+    "location": "Osona, near Okahandja, Otjozondjupa",
+    "status": "active",
+    "statusLabel": "Under Construction / Active",
+    "statusBadge": "PLACEHOLDER · 35% COMPLETE",
+    "pct": 35,
+    "units": 40,
+    "unitsDisplay": "40 units (placeholder)",
+    "areaM2": 3400,
+    "irr": 15.8,
+    "irrType": "Target",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "15% NACM (placeholder)",
+    "dealSize": 14000000,
+    "equityInvested": 3500000,
+    "debtFacility": 10500000,
+    "equityPct": 25,
+    "valuation": 17000000,
+    "coInvest": "25% sponsor equity (placeholder)",
+    "holdPeriod": "Target hold: 24–30 months (placeholder)",
+    "exitMultiple": "Projected 1.3x MOIC (placeholder)",
+    "moicNumeric": 1.3,
+    "secondary": "PLACEHOLDER DATA · 35% complete",
+    "images": [
+      "./KCPIF Images/Okamita(Osona Village)/IMG_6695_profile.jpg",
+      "./KCPIF Images/Okamita(Osona Village)/a50471e9-24b1-4b2b-8e0b-aaa9570892d4.jpg",
+      "./KCPIF Images/Okamita(Osona Village)/db9d32e9-e3b5-49ca-82fc-960788898fe7.jpg",
+      "./KCPIF Images/Okamita(Osona Village)/IMG_6691.jpg",
+      "./KCPIF Images/Okamita(Osona Village)/IMG_6692.jpg",
+      "./KCPIF Images/Okamita(Osona Village)/IMG_6696.jpg",
+      "./KCPIF Images/Okamita(Osona Village)/IMG_6704.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Okamita (Osona Village) is a affordable housing (sectional/freehold) project located in Osona, near Okahandja, Otjozondjupa. The project comprises approximately 40 units (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 25% KCPIF equity/mezzanine capital ahead of a 75% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "40 units (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 30 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "ongoshi",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Ongoshi",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Ongoshi area, northern Namibia (location placeholder)",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "PLACEHOLDER · EXITED",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "Serviced plots — count not yet confirmed (placeholder)",
+    "areaM2": 20000,
+    "irr": 12.0,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13% NACM (placeholder)",
+    "dealSize": 9000000,
+    "equityInvested": 1800000,
+    "debtFacility": 7200000,
+    "equityPct": 20,
+    "valuation": 10500000,
+    "coInvest": "20% sponsor equity (placeholder)",
+    "holdPeriod": "Completed (placeholder)",
+    "exitMultiple": "1.1x MOIC (placeholder)",
+    "moicNumeric": 1.1,
+    "secondary": "PLACEHOLDER DATA · Completed",
+    "images": [
+      "./KCPIF Images/Ongoshi/96969a44-b58e-4060-8346-0c4120b3896a_profile.jpg",
+      "./KCPIF Images/Ongoshi/20170428_091229.jpg",
+      "./KCPIF Images/Ongoshi/20170428_091359.jpg",
+      "./KCPIF Images/Ongoshi/20170428_092732.jpg",
+      "./KCPIF Images/Ongoshi/8ce41db5-ed79-4dc4-95e2-9392dc5a5d27.jpg",
+      "./KCPIF Images/Ongoshi/9e49a428-620d-4406-aeb4-9e495ea5f821.jpg",
+      "./KCPIF Images/Ongoshi/ecdb3a22-12bf-416a-89f0-0abe1e0af094.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Ongoshi is a residential land servicing project located in Ongoshi area, northern Namibia (location placeholder). The project comprises approximately serviced plots — count not yet confirmed (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 20% KCPIF equity/mezzanine capital ahead of a 80% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "Serviced plots — count not yet confirmed (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 20 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "raotra",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Raotra",
+    "sector": "landservicing",
+    "sectorLabel": "Residential Land Servicing",
+    "region": "hubs",
+    "regionLabel": "Northern & Southern Hubs",
+    "location": "Location not yet confirmed (placeholder)",
+    "status": "exited",
+    "statusLabel": "Exited / Completed",
+    "statusBadge": "PLACEHOLDER · EXITED",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "Serviced plots — count not yet confirmed (placeholder)",
+    "areaM2": 15000,
+    "irr": 11.5,
+    "irrType": "Realised",
+    "metric2Label": "Facility Rate",
+    "metric2Value": "13% NACM (placeholder)",
+    "dealSize": 7000000,
+    "equityInvested": 1400000,
+    "debtFacility": 5600000,
+    "equityPct": 20,
+    "valuation": 8000000,
+    "coInvest": "20% sponsor equity (placeholder)",
+    "holdPeriod": "Completed (placeholder)",
+    "exitMultiple": "1.08x MOIC (placeholder)",
+    "moicNumeric": 1.08,
+    "secondary": "PLACEHOLDER DATA · Completed",
+    "images": [
+      "./KCPIF Images/Raotra/3ec4e13f-901c-4edb-9b7b-60ca354c5c2c.jpg",
+      "./KCPIF Images/Raotra/c07db581-b4c9-4cce-9a9d-512392a20ed0.jpg",
+      "./KCPIF Images/Raotra/PHOTO-2018-11-02-15-40-13.jpg",
+      "./KCPIF Images/Raotra/PHOTO-2018-11-02-15-40-14 (1).jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Raotra is a residential land servicing project located in Location not yet confirmed (placeholder). The project comprises approximately serviced plots — count not yet confirmed (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 20% KCPIF equity/mezzanine capital ahead of a 80% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "Serviced plots — count not yet confirmed (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 15 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  },
+  {
+    "id": "riverport",
+    "fund": "KCPIF",
+    "fundLabel": "KCPIF · Königstein Capital Property Investment Fund",
+    "name": "Riverport",
+    "sector": "mixeduse",
+    "sectorLabel": "Residential & Commercial Mixed-Use",
+    "region": "windhoek",
+    "regionLabel": "Windhoek (Khomas)",
+    "location": "Windhoek, Khomas (location placeholder)",
+    "status": "stabilised",
+    "statusLabel": "Stabilised / Income",
+    "statusBadge": "PLACEHOLDER · BUILT",
+    "pct": 100,
+    "units": null,
+    "unitsDisplay": "Scale not yet confirmed (placeholder)",
+    "areaM2": 2500,
+    "irr": 12.5,
+    "irrType": "Target",
+    "metric2Label": "Net Yield",
+    "metric2Value": "8.5% (placeholder)",
+    "dealSize": 10000000,
+    "equityInvested": 3000000,
+    "debtFacility": 7000000,
+    "equityPct": 30,
+    "valuation": 12200000,
+    "coInvest": "30% sponsor equity (placeholder)",
+    "holdPeriod": "Current — income-producing (placeholder)",
+    "exitMultiple": "Held for income (placeholder)",
+    "moicNumeric": null,
+    "secondary": "PLACEHOLDER DATA · Current · rental income",
+    "images": [
+      "./KCPIF Images/Riverport/f_67809a0e1fa844e09c500c00887345b7_profile.jpg",
+      "./KCPIF Images/Riverport/2015-06-07 04.25.46.jpg",
+      "./KCPIF Images/Riverport/2015-06-07 04.34.03.jpg",
+      "./KCPIF Images/Riverport/2015-06-07 05.57.29.jpg",
+      "./KCPIF Images/Riverport/310855630_10219244567615888_4786410499502980748_n.jpg",
+      "./KCPIF Images/Riverport/f_f60575497083461694d283e44fc79d80.jpg",
+      "./KCPIF Images/Riverport/images.jpg"
+    ],
+    "overview": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Riverport is a residential & commercial mixed-use project located in Windhoek, Khomas (location placeholder). The project comprises approximately scale not yet confirmed (placeholder). The asset forms part of Königstein Capital's broader mandate to deploy patient capital into Namibia's housing and property development pipeline.",
+    "milestones": [
+      "[Placeholder] Site identified and photographed for internal register",
+      "[Placeholder] Status and financials to be confirmed with the fund manager",
+      "[Placeholder] Illustrative figures shown pending data verification"
+    ],
+    "waterfallText": "[Illustrative placeholder figures — actual deal terms pending confirmation from the fund register.] Illustrative capital stack: 30% KCPIF equity/mezzanine capital ahead of a 70% senior secured facility. Actual capital structure to be confirmed.",
+    "covenants": [
+      "First-ranking security over the development site and improvements (illustrative)",
+      "Phased draw-down tied to independently verified construction milestones (illustrative)",
+      "Sales or rental proceeds swept directly against outstanding facility balance (illustrative)"
+    ],
+    "esgUnits": "Scale not yet confirmed (placeholder) (placeholder figure)",
+    "esgJobs": "Approx. 10 local construction jobs supported (placeholder estimate)",
+    "esgGreen": "Compliant with local municipal building and services guidelines (unverified)",
+    "esgNotes": "Placeholder entry — contributes to Namibia's national housing and urban land servicing backlog targets pending data confirmation."
+  }
+]
+</script>
+<script id="regions-data" type="application/json">{"Windhoek": {"lat": -22.5609, "lng": 17.0658, "region": "windhoek"}, "Swakopmund": {"lat": -22.6787, "lng": 14.5257, "region": "erongo"}, "Walvis Bay": {"lat": -22.9575, "lng": 14.5053, "region": "erongo"}, "Okahandja": {"lat": -21.9833, "lng": 16.9167, "region": "otjiwarongo"}, "Otjiwarongo": {"lat": -20.4637, "lng": 16.6477, "region": "otjiwarongo"}, "Gobabis": {"lat": -22.45, "lng": 18.9667, "region": "hubs"}, "Keetmanshoop": {"lat": -26.5773, "lng": 18.1316, "region": "hubs"}, "Omuthiya": {"lat": -18.3667, "lng": 16.5833, "region": "hubs"}, "Ongwediva": {"lat": -17.7833, "lng": 15.7667, "region": "hubs"}, "Nkurenkuru": {"lat": -17.6167, "lng": 18.6167, "region": "hubs"}}</script>
+
+<script>
+(function () {
+  const assets = JSON.parse(document.getElementById('assets-data').textContent);
+  const regions = JSON.parse(document.getElementById('regions-data').textContent);
+
+  const fmtNM = (n) => n == null ? 'N/A' : 'N$' + Math.round(n).toLocaleString('en-US');
+  const fmtNMShort = (n) => {
+    if (n == null) return 'N/A';
+    if (n >= 1000000) return 'N$' + (n / 1000000).toFixed(1) + 'M';
+    return 'N$' + n.toLocaleString('en-US');
+  };
+
+  const statusTextClass = {
+    active:     'text-[#F5C97B]',
+    stabilised: 'text-[#8FD6B4]',
+    exited:     'text-[#C5A880]',
+    pipeline:   'text-[#9DB8E8]',
+  };
+  const statusLabelForRow = {
+    active:     'bg-activeBg text-activeText',
+    stabilised: 'bg-stableBg text-stableText',
+    exited:     'bg-exitedBg text-exitedText',
+    pipeline:   'bg-pipeBg text-pipeText',
+  };
+
+  function infoIcon(text) {
+    return `<span tabindex="0" title="${text}" class="inline-flex text-slate/60 hover:text-forestDeep cursor-help">
+      <i data-lucide="info" class="w-3.5 h-3.5 pointer-events-none"></i>
+    </span>`;
+  }
+
+  // Header Parallax & Scroll Blur
+  const siteHeader = document.getElementById('siteHeader');
+  const heroParallaxImg = document.getElementById('heroParallaxImg');
+  let parallaxTicking = false;
+
+  function updateParallax() {
+    const y = Math.min(window.scrollY, 700);
+    if (heroParallaxImg) {
+      heroParallaxImg.style.transform = `translateY(${y * 0.18}px) scale(${1.08 + y * 0.00015})`;
+    }
+    if (window.scrollY > 40) siteHeader.classList.add('scrolled');
+    else siteHeader.classList.remove('scrolled');
+    parallaxTicking = false;
+  }
+  window.addEventListener('scroll', () => {
+    if (!parallaxTicking) {
+      requestAnimationFrame(updateParallax);
+      parallaxTicking = true;
+    }
+  }, { passive: true });
+  updateParallax();
+
+  // Count-up Rollup (2.4s)
+  function animateCount(el, target, opts) {
+    opts = opts || {};
+    const duration = opts.duration || 2400;
+    const prefix = opts.prefix || '';
+    const suffix = opts.suffix || '';
+    const format = opts.format || ((v) => v.toLocaleString('en-US', {
+      minimumFractionDigits: opts.decimals || 0, maximumFractionDigits: opts.decimals || 0,
+    }));
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const value = target * eased;
+      el.textContent = prefix + format(value) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+      else el.textContent = prefix + format(target) + suffix;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function computeKPIs(list) {
+    const totalCapital = list.reduce((s, a) => s + (a.dealSize || 0), 0);
+    let irrWeighted = 0, irrWeight = 0;
+    list.forEach((a) => {
+      if (a.irr != null && a.dealSize) { irrWeighted += a.irr * a.dealSize; irrWeight += a.dealSize; }
+    });
+    const avgIRR = irrWeight > 0 ? irrWeighted / irrWeight : 0;
+    const totalArea = list.reduce((s, a) => s + (a.areaM2 || 0), 0);
+    return { totalCapital, avgIRR, totalArea, dealCount: list.length };
+  }
+
+  let kpiObserved = false;
+
+  function updateKPIRibbon(list, animate) {
+    const k = computeKPIs(list);
+    const capitalEl = document.getElementById('kpiCapital');
+    const irrEl = document.getElementById('kpiIRR');
+    const areaEl = document.getElementById('kpiArea');
+    const dealsEl = document.getElementById('kpiDeals');
+
+    if (!kpiObserved) {
+      capitalEl.textContent = 'N$' + (k.totalCapital / 1000000).toFixed(1) + 'M';
+      irrEl.textContent = k.avgIRR.toFixed(2);
+      areaEl.textContent = Math.round(k.totalArea).toLocaleString('en-US');
+      dealsEl.textContent = k.dealCount;
+      return;
+    }
+    const dur = animate ? 900 : 2400;
+    animateCount(capitalEl, k.totalCapital / 1000000, { duration: dur, decimals: 1, prefix: 'N$', suffix: 'M' });
+    animateCount(irrEl, k.avgIRR, { duration: dur, decimals: 2 });
+    animateCount(areaEl, k.totalArea, { duration: dur, decimals: 0 });
+    animateCount(dealsEl, k.dealCount, { duration: dur, decimals: 0 });
+  }
+
+  const kpiRibbon = document.getElementById('kpiRibbon');
+  const kpiObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && !kpiObserved) {
+        kpiObserved = true;
+        updateKPIRibbon(getFilteredList(), true);
+        kpiObserver.disconnect();
+      }
+    });
+  }, { threshold: 0.35 });
+  kpiObserver.observe(kpiRibbon);
+
+  // Card Template - Concept 4 "Hover-Reveal Minimalist"
+  function cardTemplate(a) {
+    const barPct = a.status === 'pipeline' ? 6 : Math.min(100, a.pct);
+    const irrLabel = `${a.irrType} IRR`;
+    return `
+    <article class="prop-card group bg-white rounded-xl border border-line overflow-hidden fade-in">
+      <a href="#" data-asset="${a.id}" class="view-deep-dive block relative prop-img-wrap aspect-[4/3] cursor-pointer">
+        <img src="${a.images[0]}" alt="${a.name}" loading="lazy" class="prop-img w-full h-full object-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=1200&q=80';" />
+        <span class="emboss-tag absolute top-3 left-3 text-[10px] font-bold tracking-[0.1em] px-2.5 py-1 rounded-full">${a.fund}</span>
+        <span class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/85 shadow flex items-center justify-center pointer-events-none">
+          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 text-forestDeep"></i>
+        </span>
+        <span class="glass-badge absolute bottom-3 left-3 text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-full ${statusTextClass[a.status]}">${a.statusBadge}</span>
+        <span class="hairline-track">
+          <span class="hairline-fill" style="width:${barPct}%"></span>
+        </span>
+      </a>
+
+      <div class="prop-body p-5 flex flex-col">
+        <div>
+          <h3 class="font-display text-xl text-ink leading-snug mb-2">${a.name}</h3>
+          <p class="text-sm text-slate mb-1.5">${a.sectorLabel}</p>
+          <p class="flex items-start gap-1.5 text-sm text-slate">
+            <i data-lucide="map-pin" class="w-4 h-4 text-forestDeep shrink-0 mt-0.5"></i>${a.location}
+          </p>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-4">
+          <div>
+            <p class="text-[11px] text-slate mb-0.5">Deal Size</p>
+            <p class="tnum font-display text-xl text-ink">${fmtNMShort(a.dealSize)}</p>
+          </div>
+          <div>
+            <p class="text-[11px] text-slate mb-0.5">${irrLabel}</p>
+            <p class="tnum font-display text-xl text-ink">${a.irr.toFixed(2)}%</p>
+          </div>
+        </div>
+
+        <div class="hover-reveal">
+          <div class="flex items-center justify-between text-sm border-t border-line pt-3">
+            <span class="flex items-center gap-1.5 text-slate">${a.metric2Label}${infoIcon('Net income yield after operating costs — or, for credit facilities, the blended lending rate charged.')}</span>
+            <span class="tnum font-semibold text-ink">${a.metric2Value}</span>
+          </div>
+          <div class="flex items-center justify-between text-sm mt-2 mb-3">
+            <span class="flex items-center gap-1.5 text-slate">Co-Investment${infoIcon('Share of the deal funded by sponsor / co-investment equity, ahead of senior debt.')}</span>
+            <span class="tnum font-semibold text-ink">${a.coInvest}</span>
+          </div>
+          <button type="button" data-asset="${a.id}" class="view-deep-dive inline-flex items-center gap-1.5 text-sm font-semibold text-forestDeep hover:text-sandDk transition-colors">
+            View Deal Tear-Sheet <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <p class="text-center text-xs text-slate mt-4">${a.secondary}</p>
+      </div>
+    </article>`;
+  }
+
+  function rowTemplate(a) {
+    const s = statusLabelForRow[a.status];
+    return `
+    <tr class="border-b border-line hover:bg-linen/60 transition-colors">
+      <td class="py-3 pr-4 font-medium text-ink">${a.name}</td>
+      <td class="py-3 pr-4"><span class="text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-full ${a.fund === 'KAHF' ? 'fund-pill-kahf' : 'fund-pill-kcpif'}">${a.fund}</span></td>
+      <td class="py-3 pr-4 text-slate">${a.regionLabel}</td>
+      <td class="py-3 pr-4"><span class="text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-full ${s}">${a.statusLabel}</span></td>
+      <td class="py-3 pr-4 text-right tnum font-semibold text-ink">${a.irr.toFixed(2)}%</td>
+      <td class="py-3 pr-4 text-right tnum font-semibold text-ink">${a.metric2Value}</td>
+      <td class="py-3 pr-4 text-right tnum font-semibold text-ink">${fmtNMShort(a.dealSize)}</td>
+      <td class="py-3 pr-4 text-right">
+        <button type="button" data-asset="${a.id}" class="view-deep-dive text-xs font-semibold text-forestDeep hover:underline">View Deep-Dive</button>
+      </td>
+    </tr>`;
+  }
+
+  const grid = document.getElementById('propertyGrid');
+  const tableBody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+
+  function render(list) {
+    if (list.length === 0) {
+      grid.innerHTML = '';
+      tableBody.innerHTML = '';
+      empty.classList.remove('hidden');
+      empty.classList.add('flex');
+    } else {
+      empty.classList.add('hidden');
+      empty.classList.remove('flex');
+      grid.innerHTML = list.map(cardTemplate).join('');
+      tableBody.innerHTML = list.map(rowTemplate).join('');
+    }
+    if (window.lucide) lucide.createIcons();
+    attachDeepDiveHandlers();
+  }
+
+  // Sidebar Filter Logic
+  const selected = { fund: new Set(), sector: new Set(), region: new Set(), status: new Set() };
+  const fundChecks = Array.from(document.querySelectorAll('.fund-check'));
+  const sectorChecks = Array.from(document.querySelectorAll('.sector-check'));
+  const regionChecks = Array.from(document.querySelectorAll('.region-check'));
+  const statusChecks = Array.from(document.querySelectorAll('.status-check'));
+
+  fundChecks.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      if (cb.value === 'all') {
+        if (cb.checked) fundChecks.forEach((o) => { if (o.value !== 'all') o.checked = false; });
+      } else {
+        if (cb.checked) fundChecks.find((o) => o.value === 'all').checked = false;
+        const anySpecific = fundChecks.some((o) => o.value !== 'all' && o.checked);
+        if (!anySpecific) fundChecks.find((o) => o.value === 'all').checked = true;
+      }
+      selected.fund = new Set(fundChecks.filter((o) => o.checked && o.value !== 'all').map((o) => o.value));
+      applyFilters();
+    });
+  });
+
+  function bindGroup(checks, setKey) {
+    checks.forEach((cb) => {
+      cb.addEventListener('change', () => {
+        selected[setKey] = new Set(checks.filter((o) => o.checked).map((o) => o.value));
+        applyFilters();
+      });
+    });
+  }
+  bindGroup(sectorChecks, 'sector');
+  bindGroup(regionChecks, 'region');
+  bindGroup(statusChecks, 'status');
+
+  function resetFilters() {
+    fundChecks.forEach((cb) => { cb.checked = cb.value === 'all'; });
+    sectorChecks.forEach((cb) => { cb.checked = false; });
+    regionChecks.forEach((cb) => { cb.checked = false; });
+    statusChecks.forEach((cb) => { cb.checked = false; });
+    selected.fund.clear(); selected.sector.clear(); selected.region.clear(); selected.status.clear();
+    document.getElementById('searchInput').value = '';
+    document.getElementById('sortFilter').value = 'default';
+    applyFilters();
+  }
+  document.getElementById('resetFiltersBtn').addEventListener('click', resetFilters);
+  document.getElementById('resetFiltersBtnBottom').addEventListener('click', resetFilters);
+
+  function getFilteredList() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    const sort = document.getElementById('sortFilter').value;
+
+    let list = assets.filter((a) => {
+      const matchesQ = !q ||
+        a.name.toLowerCase().includes(q) ||
+        a.location.toLowerCase().includes(q) ||
+        a.sectorLabel.toLowerCase().includes(q) ||
+        a.regionLabel.toLowerCase().includes(q);
+      const matchesFund = selected.fund.size === 0 || selected.fund.has(a.fund);
+      const matchesSector = selected.sector.size === 0 || selected.sector.has(a.sector);
+      const matchesRegion = selected.region.size === 0 || selected.region.has(a.region);
+      const matchesStatus = selected.status.size === 0 || selected.status.has(a.status);
+      return matchesQ && matchesFund && matchesSector && matchesRegion && matchesStatus;
+    });
+
+    if (sort === 'irr') list.sort((a, b) => b.irr - a.irr);
+    if (sort === 'value') list.sort((a, b) => (b.dealSize || 0) - (a.dealSize || 0));
+    if (sort === 'pct') list.sort((a, b) => b.pct - a.pct);
+
+    return list;
+  }
+
+  function applyFilters() {
+    const list = getFilteredList();
+    render(list);
+    updateKPIRibbon(list, true);
+  }
+
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+  document.getElementById('sortFilter').addEventListener('change', applyFilters);
+
+  // View Switcher
+  const gridBtn = document.getElementById('gridViewBtn');
+  const tableBtn = document.getElementById('tableViewBtn');
+  const tableWrap = document.getElementById('tableWrap');
+  function setView(view) {
+    const isTable = view === 'table';
+    grid.classList.toggle('hidden', isTable);
+    tableWrap.classList.toggle('hidden', !isTable);
+    gridBtn.classList.toggle('bg-linen', !isTable);
+    gridBtn.classList.toggle('text-forestDeep', !isTable);
+    gridBtn.classList.toggle('text-slate/60', isTable);
+    tableBtn.classList.toggle('bg-linen', isTable);
+    tableBtn.classList.toggle('text-forestDeep', isTable);
+    tableBtn.classList.toggle('text-slate/60', !isTable);
+    gridBtn.setAttribute('aria-pressed', String(!isTable));
+    tableBtn.setAttribute('aria-pressed', String(isTable));
+    setTimeout(() => { if (map) map.invalidateSize(); }, 60);
+  }
+  gridBtn.addEventListener('click', () => setView('grid'));
+  tableBtn.addEventListener('click', () => setView('table'));
+
+  const mobileNavBtn = document.getElementById('mobileNavBtn');
+  const mobileNav = document.getElementById('mobileNav');
+  if (mobileNavBtn) mobileNavBtn.addEventListener('click', () => mobileNav.classList.toggle('hidden'));
+
+  // Leaflet Map (Light-mode Positron)
+  let map;
+  function initMap() {
+    map = L.map('leafletMap', { scrollWheelZoom: false }).setView([-22.0, 17.0], 5.3);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      maxZoom: 12,
+      subdomains: 'abcd',
+    }).addTo(map);
+
+    const pulseIcon = L.divIcon({
+      className: '',
+      html: '<div class="pulse-marker"><div class="ring"></div><div class="dot"></div></div>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    Object.keys(regions).forEach((town) => {
+      const r = regions[town];
+      const marker = L.marker([r.lat, r.lng], { icon: pulseIcon }).addTo(map);
+      marker.bindPopup(`<strong>${town}</strong>`);
+      marker.on('click', () => {
+        const cb = regionChecks.find((o) => o.value === r.region);
+        if (cb) {
+          regionChecks.forEach((o) => { o.checked = o.value === r.region; });
+          selected.region = new Set([r.region]);
+          applyFilters();
+          document.getElementById('portfolio').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    setTimeout(() => map.invalidateSize(), 150);
+    window.addEventListener('resize', () => map.invalidateSize());
+  }
+
+  // Deep-Dive (View 2)
+  const viewHub = document.getElementById('view-hub');
+  const viewDetail = document.getElementById('view-detail');
+  let currentAsset = null;
+  let currentImages = [];
+  let currentMainIdx = 0;
+  let lightboxIndex = 0;
+
+  function attachDeepDiveHandlers() {
+    document.querySelectorAll('.view-deep-dive').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        openDeepDive(el.getAttribute('data-asset'));
+      });
+    });
+  }
+
+  function featuresFor(a) {
+    return [
+      `${a.sectorLabel} in ${a.regionLabel}`,
+      a.unitsDisplay ? `Scale: ${a.unitsDisplay}` : null,
+      `Fund mandate: ${a.fundLabel}`,
+      `Status: ${a.statusLabel}`,
+    ].filter(Boolean);
+  }
+
+  function setMainImage(idx) {
+    currentMainIdx = idx;
+    const img = document.getElementById('panoramicImg');
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = currentImages[idx];
+      img.alt = currentAsset ? currentAsset.name : '';
+      img.style.opacity = '1';
+    }, 120);
+    document.querySelectorAll('#thumbRow .thumb-card').forEach((el, i) => {
+      el.classList.toggle('active-main', i === idx);
+    });
+  }
+
+  function renderThumbRow(images) {
+    const row = document.getElementById('thumbRow');
+    row.innerHTML = images.slice(0, 4).map((img, i) =>
+      `<div class="thumb-card aspect-[4/3] ${i === 0 ? 'active-main' : ''}" data-idx="${i}">
+        <img src="${img}" alt="Photo ${i + 1}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=600&q=80';" />
+      </div>`
+    ).join('');
+    row.querySelectorAll('.thumb-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const idx = parseInt(card.getAttribute('data-idx'), 10);
+        setMainImage(idx);
+        openLightbox(currentImages, idx);
+      });
+    });
+  }
+
+  function populateCashFlowTimeline(a) {
+    document.getElementById('cfDrawdown').textContent = `${fmtNM(a.dealSize)} at facility inception`;
+    document.getElementById('cfInterim').textContent = `${a.metric2Label}: ${a.metric2Value}, distributed periodically`;
+    if (a.moicNumeric != null) {
+      const exitAmount = a.dealSize * a.moicNumeric;
+      const qualifier = a.irrType === 'Realised' ? 'realised' : 'projected';
+      document.getElementById('cfExit').textContent = `${fmtNM(exitAmount)} ${qualifier} at exit (${a.holdPeriod})`;
+    } else {
+      document.getElementById('cfExit').textContent = 'Held for income — no fixed exit event';
+    }
+  }
+
+  function populateMoicWidget(a) {
+    const headlineEl = document.getElementById('moicHeadline');
+    const noteEl = document.getElementById('moicNote');
+    if (a.moicNumeric != null) {
+      const netPct = Math.round((a.moicNumeric - 1) * 100);
+      const qualifier = a.irrType === 'Realised' ? 'Realised' : 'Estimated';
+      headlineEl.textContent = `${a.moicNumeric.toFixed(2)}x MOIC · ${qualifier} +${netPct}% Net Capital Return`;
+      const exampleReturn = Math.round(a.moicNumeric * 100000).toLocaleString('en-US');
+      noteEl.textContent = `For every N$100,000 committed, ${qualifier.toLowerCase()} total return at exit is N$${exampleReturn}.`;
+    } else {
+      headlineEl.textContent = 'Held for Income — No Fixed Exit Multiple';
+      noteEl.textContent = 'This asset is structured for recurring income distributions rather than a fixed-multiple exit; no MOIC target is set for this position.';
+    }
+  }
+
+  function openDeepDive(assetId) {
+    const a = assets.find((x) => x.id === assetId);
+    if (!a) return;
+    currentAsset = a;
+    currentImages = a.images;
+
+    document.getElementById('detailFundPill').textContent = a.fund;
+    document.getElementById('detailStatusPill').textContent = a.statusBadge;
+    document.getElementById('detailTitle').textContent = a.name;
+    document.getElementById('detailLocation').innerHTML = `<i data-lucide="map-pin" class="w-4 h-4"></i> ${a.location} · ${a.regionLabel}`;
+
+    renderThumbRow(a.images);
+    setMainImage(0);
+    document.getElementById('panoramicImg').onclick = () => openLightbox(currentImages, currentMainIdx);
+
+    document.getElementById('detailOverview').textContent = a.overview;
+    document.getElementById('detailFeatures').innerHTML = featuresFor(a).map((f) =>
+      `<li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-forestDeep shrink-0 mt-0.5"></i><span>${f}</span></li>`
+    ).join('');
+
+    document.getElementById('scopeText').textContent =
+      `${a.name} spans a ${a.sectorLabel.toLowerCase()} scope in ${a.location}. Architectural specification and unit mix are aligned to ${a.fund === 'KAHF' ? 'affordable-tier housing delivery standards' : 'market-rate residential and mixed-use investment criteria'} for the surrounding submarket.`;
+    document.getElementById('scopeSector').textContent = a.sectorLabel;
+    document.getElementById('scopeUnits').textContent = a.unitsDisplay || 'Not applicable (land/infrastructure facility)';
+
+    document.getElementById('detailMilestones').innerHTML = a.milestones.map((m) =>
+      `<li class="flex items-start gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-stableText shrink-0 mt-0.5"></i><span>${m}</span></li>`
+    ).join('');
+    populateCashFlowTimeline(a);
+
+    document.getElementById('detailWaterfallText').textContent = a.waterfallText;
+    document.getElementById('capStackEquity').style.width = a.equityPct + '%';
+    document.getElementById('capStackDebt').style.width = (100 - a.equityPct) + '%';
+    document.getElementById('detailCovenants').innerHTML = a.covenants.map((c) => `<li>${c}</li>`).join('');
+    populateMoicWidget(a);
+
+    document.getElementById('esgUnits').textContent = a.esgUnits;
+    document.getElementById('esgJobs').textContent = a.esgJobs;
+    document.getElementById('esgGreen').textContent = a.esgGreen;
+    document.getElementById('esgNotes').textContent = a.esgNotes;
+
+    document.getElementById('figDealSize').textContent = fmtNM(a.dealSize);
+    document.getElementById('figPctLabel').textContent = a.status === 'pipeline' ? 'Prospective' : `${a.pct}%`;
+    document.getElementById('figProgressBar').style.width = (a.status === 'pipeline' ? 6 : Math.min(100, a.pct)) + '%';
+    document.getElementById('figHold').textContent = a.holdPeriod;
+    document.getElementById('figIRR').textContent = `${a.irr.toFixed(2)}% (${a.irrType})`;
+    document.getElementById('figYieldLabel').textContent = a.metric2Label;
+    document.getElementById('figYield').textContent = a.metric2Value;
+    document.getElementById('figValuation').textContent = fmtNM(a.valuation);
+    document.getElementById('figCoInvest').textContent = a.coInvest;
+
+    const mailHref = `mailto:info@konigsteincapital.com?subject=${encodeURIComponent('Data Room Request: ' + a.name)}`;
+    document.getElementById('btnInquire').onclick = () => { window.location.href = mailHref; };
+
+    switchTab('scope');
+
+    viewHub.classList.add('hidden');
+    viewDetail.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (window.lucide) lucide.createIcons();
+    setTimeout(() => { if (map) map.invalidateSize(); }, 60);
+  }
+
+  document.getElementById('backToHubBtn').addEventListener('click', () => {
+    viewDetail.classList.add('hidden');
+    viewHub.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    setTimeout(() => { if (map) map.invalidateSize(); }, 60);
+  });
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-tab') === tab));
+    document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + tab));
+    if (window.lucide) lucide.createIcons();
+  }
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+  });
+
+  // Lightbox
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxCounter = document.getElementById('lightboxCounter');
+  const lightboxThumbs = document.getElementById('lightboxThumbs');
+  let lightboxImages = [];
+
+  function renderLightboxThumbs() {
+    lightboxThumbs.innerHTML = lightboxImages.map((img, i) =>
+      `<img src="${img}" data-idx="${i}" class="w-16 h-16 object-cover rounded-md border-2 ${i === lightboxIndex ? 'active-thumb' : ''}" alt="Thumbnail ${i + 1}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=200&q=80';" />`
+    ).join('');
+    lightboxThumbs.querySelectorAll('img').forEach((img) => {
+      img.addEventListener('click', () => showLightboxImage(parseInt(img.getAttribute('data-idx'), 10)));
+    });
+  }
+
+  function showLightboxImage(idx) {
+    lightboxIndex = (idx + lightboxImages.length) % lightboxImages.length;
+    lightboxImg.style.opacity = '0';
+    setTimeout(() => {
+      lightboxImg.src = lightboxImages[lightboxIndex];
+      lightboxImg.style.opacity = '1';
+    }, 120);
+    lightboxCounter.textContent = `${lightboxIndex + 1} of ${lightboxImages.length}`;
+    lightboxThumbs.querySelectorAll('img').forEach((img, i) => {
+      img.classList.toggle('active-thumb', i === lightboxIndex);
+    });
+    if (currentAsset && lightboxImages === currentImages) setMainImage(lightboxIndex);
+  }
+
+  function openLightbox(images, startIdx) {
+    lightboxImages = images;
+    lightbox.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    renderLightboxThumbs();
+    showLightboxImage(startIdx || 0);
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function closeLightbox() {
+    lightbox.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+  document.getElementById('lightboxPrev').addEventListener('click', () => showLightboxImage(lightboxIndex - 1));
+  document.getElementById('lightboxNext').addEventListener('click', () => showLightboxImage(lightboxIndex + 1));
+
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (lightbox.classList.contains('hidden')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') showLightboxImage(lightboxIndex - 1);
+    if (e.key === 'ArrowRight') showLightboxImage(lightboxIndex + 1);
+  });
+
+  // Toasts
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    el.style.opacity = '1';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => el.classList.add('hidden'), 250);
+    }, 3200);
+  }
+  document.getElementById('btnTearSheetPDF').addEventListener('click', () => {
+    showToast('The full fund tear-sheet is available to verified investors via the Investor Portal.');
+  });
+  document.getElementById('btnProspectus').addEventListener('click', () => {
+    showToast('The supplemental prospectus is available to verified investors via the Investor Portal.');
+  });
+
+  // Initialization
+  render(getFilteredList());
+  updateKPIRibbon(getFilteredList(), false);
+  initMap();
+  lucide.createIcons();
+})();
+</script>
+</body>
+</html>

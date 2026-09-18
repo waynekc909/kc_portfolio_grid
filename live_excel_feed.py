@@ -1,6 +1,8 @@
 import json
 import re
 import os
+import shutil
+import tempfile
 
 HTML_FILE = "index.html"
 EXCEL_FILE = "KAHF_Consolidated_Fund_Model  Updated.xlsx"
@@ -48,45 +50,73 @@ def run_pipeline():
     asset_dict = {a['id']: a for a in assets}
 
     print("2. Connecting to live Excel model...")
+    # Create temporary copy to prevent Windows file-locking errors [Errno 13]
+    temp_excel = os.path.join(tempfile.gettempdir(), "temp_fund_model.xlsx")
+    shutil.copy2(EXCEL_FILE, temp_excel)
+
     try:
         import openpyxl
-        wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
+        wb = openpyxl.load_workbook(temp_excel, data_only=True)
         
         # --- TAB 1: FINANCIAL METRICS ---
         ws_perf = wb['2. Project Performance']
-        for r in range(5, ws_perf.max_row + 1):
-            excel_name = ws_perf.cell(r, 1).value
+        
+        # Safe default column map
+        header_row = 4
+        col_map = {'name': 1, 'status': 2, 'dealSize': 6, 'valuation': 9, 'moic': 11, 'irr': 12}
+
+        # Dynamically detect column headers across top 10 rows
+        for r in range(1, 10):
+            row_values = [str(ws_perf.cell(r, c).value or '').strip().lower() for c in range(1, 20)]
+            if any('project' in v or 'asset' in v for v in row_values):
+                header_row = r
+                for c in range(1, 20):
+                    val = str(ws_perf.cell(r, c).value or '').strip().lower()
+                    if 'project' in val or 'asset' in val: col_map['name'] = c
+                    elif 'status' in val: col_map['status'] = c
+                    elif 'deal size' in val or 'commitment' in val: col_map['dealSize'] = c
+                    elif 'nav' in val or 'valuation' in val: col_map['valuation'] = c
+                    elif 'moic' in val: col_map['moic'] = c
+                    elif 'irr' in val: col_map['irr'] = c
+                break
+
+        for r in range(header_row + 1, ws_perf.max_row + 1):
+            excel_name = ws_perf.cell(r, col_map['name']).value
+            if not excel_name:
+                continue
+
             web_id = get_web_id(excel_name)
             
             if web_id and web_id in asset_dict:
                 asset = asset_dict[web_id]
                 
                 # Status
-                status_raw = str(ws_perf.cell(r, 2).value).strip().lower()
+                status_raw = str(ws_perf.cell(r, col_map['status']).value).strip().lower()
                 if status_raw in ['active', 'completed', 'pipeline']:
                     asset['status'] = 'exited' if status_raw == 'completed' else status_raw
                 
-                # Deal Size (Col F)
-                deal_size = ws_perf.cell(r, 6).value
+                # Deal Size
+                deal_size = ws_perf.cell(r, col_map['dealSize']).value
                 if isinstance(deal_size, (int, float)):
                     asset['dealSize'] = int(deal_size)
                     
-                # Valuation / NAV (Col I)
-                nav = ws_perf.cell(r, 9).value
+                # Valuation / NAV
+                nav = ws_perf.cell(r, col_map['valuation']).value
                 if isinstance(nav, (int, float)):
                     asset['valuation'] = int(nav)
                     
-                # MOIC (Col K) -> Handles 'n/a' correctly
-                moic = ws_perf.cell(r, 11).value
+                # MOIC
+                moic = ws_perf.cell(r, col_map['moic']).value
                 if isinstance(moic, (int, float)):
                     asset['moicNumeric'] = round(float(moic), 2)
                 elif str(moic).strip().lower() == 'n/a':
                     asset['moicNumeric'] = None 
                     
-                # IRR (Col L) -> Converts 0.169 to 16.9
-                irr = ws_perf.cell(r, 12).value
+                # IRR -> Smart Scale (Handles decimal 0.0874 vs whole number 8.74)
+                irr = ws_perf.cell(r, col_map['irr']).value
                 if isinstance(irr, (int, float)):
-                    asset['irr'] = round(float(irr) * 100, 2)
+                    val = float(irr)
+                    asset['irr'] = round(val * 100, 2) if val < 2.0 else round(val, 2)
 
         # --- TAB 2: OPERATIONAL/DELIVERY METRICS ---
         ws_deliv = wb['3. Delivery Outputs']
@@ -106,14 +136,19 @@ def run_pipeline():
                 # Completion Percentage (Col F)
                 pct = ws_deliv.cell(r, 6).value
                 if isinstance(pct, (int, float)):
-                    # Converts 0.41 to 41.0
-                    clean_pct = round(float(pct) * 100, 1)
+                    val_pct = float(pct)
+                    clean_pct = round(val_pct * 100, 1) if val_pct <= 1.0 else round(val_pct, 1)
                     asset['pct'] = clean_pct
                     asset['statusBadge'] = f"{clean_pct}% COMPLETE" if asset['status'] == 'active' else asset['statusBadge']
+
+        wb.close()
 
     except Exception as e:
         print(f"Failed to process Excel model: {e}")
         return
+    finally:
+        if os.path.exists(temp_excel):
+            os.remove(temp_excel)
 
     print("3. Compiling final JSON and injecting to live framework...")
     new_json_str = json.dumps(list(asset_dict.values()), indent=2, ensure_ascii=False)

@@ -3,37 +3,48 @@ import json
 import re
 import os
 
-# File paths
 CSV_FILE = "Portfolio_API_Master.csv"
 HTML_FILE = "index.html"
+IMAGE_DIRS = ["KAHF Portfolio Images", "KCPIF Images"]
 
-def get_existing_images(html_path):
-    """Extracts existing images from the HTML so the CSV doesn't overwrite them."""
-    if not os.path.exists(html_path):
-        return {}
+def normalize(text):
+    """Normalizes text for fuzzy matching (removes special chars and lowercase)."""
+    return re.sub(r'[^a-z0-9]', '', str(text).lower())
+
+def scan_disk_for_images():
+    """Scans local image directories and maps files to project search keys."""
+    disk_images = {}
     
-    with open(html_path, "r", encoding="utf-8") as f:
-        html = f.read()
+    for img_dir in IMAGE_DIRS:
+        if not os.path.exists(img_dir):
+            continue
         
-    pattern = r'(<script id="assets-data" type="application/json">)(.*?)(</script>)'
-    match = re.search(pattern, html, re.DOTALL)
-    
-    image_map = {}
-    if match:
-        try:
-            assets = json.loads(match.group(2))
-            for a in assets:
-                image_map[a.get("id")] = a.get("images", [])
-        except Exception as e:
-            print(f"Warning: Could not parse existing JSON images. {e}")
-    return image_map
+        for root, _, files in os.walk(img_dir):
+            if not files:
+                continue
+            
+            folder_name = os.path.basename(root)
+            norm_folder = normalize(folder_name)
+            
+            image_paths = []
+            for file in files:
+                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) and not file.startswith('~$'):
+                    rel_path = os.path.join(root, file).replace("\\", "/")
+                    image_paths.append(rel_path)
+            
+            # Prioritize 'profile' images at the top of the array
+            image_paths.sort(key=lambda p: 0 if 'profile' in os.path.basename(p).lower() else 1)
+            
+            if image_paths and norm_folder:
+                disk_images[norm_folder] = image_paths
 
-def csv_to_json(csv_path, image_map):
+    return disk_images
+
+def csv_to_json(csv_path, disk_images):
     assets = []
     with open(csv_path, mode='r', encoding='utf-8-sig') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            # Safely handle empty strings and formatted numbers (e.g. "33,000,000")
             def safe_float(val):
                 try: return float(val.replace(',','').replace('%','').strip())
                 except: return 0.0
@@ -42,10 +53,20 @@ def csv_to_json(csv_path, image_map):
                 except: return 0
             
             asset_id = row.get("id", "").strip()
+            asset_name = row.get("name", "").strip()
             if not asset_id:
-                continue # Skip empty rows
+                continue
             
-            # Convert pipe-separated strings into formal bullet lists
+            # Match disk images by ID, asset name, or fuzzy substring
+            matched_images = []
+            norm_id = normalize(asset_id)
+            norm_name = normalize(asset_name)
+            
+            for folder_norm, paths in disk_images.items():
+                if folder_norm == norm_id or folder_norm == norm_name or folder_norm in norm_name or norm_id in folder_norm:
+                    matched_images = paths
+                    break
+            
             milestones = [m.strip() for m in row.get("milestones", "").split('|') if m.strip()]
             covenants = [c.strip() for c in row.get("covenants", "").split('|') if c.strip()]
             
@@ -53,7 +74,7 @@ def csv_to_json(csv_path, image_map):
                 "id": asset_id,
                 "fund": row.get("fund", ""),
                 "fundLabel": f"{row.get('fund', '')} · {row.get('fund_long_name', '')}",
-                "name": row.get("name", ""),
+                "name": asset_name,
                 "sector": row.get("sector", ""),
                 "sectorLabel": row.get("sector_label", ""),
                 "region": row.get("region", ""),
@@ -80,7 +101,7 @@ def csv_to_json(csv_path, image_map):
                 "exitMultiple": row.get("exit_multiple", ""),
                 "moicNumeric": safe_float(row.get("moic_numeric", 0)) if row.get("moic_numeric", "").strip() else None,
                 "secondary": row.get("secondary_text", ""),
-                "images": image_map.get(asset_id, []), # Inject preserved image paths
+                "images": matched_images,
                 "overview": row.get("overview", ""),
                 "milestones": milestones,
                 "waterfallText": row.get("waterfall_text", ""),
@@ -93,38 +114,33 @@ def csv_to_json(csv_path, image_map):
             assets.append(asset)
     return assets
 
-def inject_json_into_html(json_data, html_path):
-    if not os.path.exists(html_path):
-        print(f"Error: HTML file '{html_path}' not found.")
-        return
-
+def inject_json_into_html(fresh_data, html_path):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # Target the specific <script> tag block
     pattern = r'(<script id="assets-data" type="application/json">)(.*?)(</script>)'
-    
-    if not re.search(pattern, html, re.DOTALL):
-        print("Error: Could not find <script id='assets-data'> tag in HTML.")
-        return
+    match = re.search(pattern, html, re.DOTALL)
 
-    new_json_str = json.dumps(json_data, indent=2)
-    new_html = re.sub(pattern, rf'\g<1>{new_json_str}\g<3>', html, flags=re.DOTALL)
-
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(new_html)
-    print(f"✓ Success! Injected {len(json_data)} active project ledgers into the web dashboard.")
+    if match:
+        new_json_str = json.dumps(fresh_data, indent=2, ensure_ascii=False)
+        # String slicing completely avoids regex backslash escape errors (\u, \Users, etc.)
+        new_html = html[:match.start(2)] + "\n" + new_json_str + "\n" + html[match.end(2):]
+        
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(new_html)
+        print("✓ Successfully injected updated data & images into HTML.")
+    else:
+        print("Error: Could not locate <script id=\"assets-data\"> tag in HTML.")
 
 if __name__ == "__main__":
     if not os.path.exists(CSV_FILE):
         print(f"Error: '{CSV_FILE}' not found. Please save your Excel Master as a CSV first.")
     else:
-        print("1. Locking existing image paths...")
-        img_map = get_existing_images(HTML_FILE)
+        print("1. Scanning local image directories...")
+        disk_images = scan_disk_for_images()
         
-        print("2. Parsing live CSV data...")
-        fresh_data = csv_to_json(CSV_FILE, img_map)
+        print("2. Parsing CSV data and mapping image folders...")
+        fresh_data = csv_to_json(CSV_FILE, disk_images)
         
-        print("3. Updating web presentation...")
+        print("3. Injecting payload into HTML...")
         inject_json_into_html(fresh_data, HTML_FILE)
-        
